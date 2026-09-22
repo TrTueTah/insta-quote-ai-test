@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@insta-quote/contracts": ["./packages/contracts/src/index.ts"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "apps/extraction-api/src/**/*.ts",
+    "apps/extraction-api/tests/**/*.ts",
+    "scripts/**/*.mjs"
+  ]
+}

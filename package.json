@@ -1,0 +1,23 @@
+{
+  "name": "insta-quote-ai",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --pretty",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "dump-text": "node scripts/dump-page-text.mjs",
+    "check:openai": "node scripts/check-openai.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "tsx": "^4.19.0",
+    "prettier": "^3.4.0",
+    "pdfjs-dist": "^4.10.38"
+  }
+}

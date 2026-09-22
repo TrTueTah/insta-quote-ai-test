@@ -1,0 +1,16 @@
+# Deploy-target-agnostic: this service is a plain Node process that binds a port. There is
+# no serverless entry point and no platform adapter anywhere in src/, so moving hosts is a
+# config change rather than a rewrite.
+services:
+  - type: web
+    name: insta-quote-extraction-api
+    runtime: node
+    plan: starter
+    buildCommand: pnpm install --frozen-lockfile
+    startCommand: pnpm --filter @insta-quote/extraction-api start
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PORT
+        value: 3001

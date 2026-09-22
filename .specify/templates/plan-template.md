@@ -31,7 +31,30 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+*Source: `.specify/memory/constitution.md` v1.0.0. Principles I and IV admit no justified
+violation — a design that requires violating them is rejected, not tracked below.*
+
+- [ ] **I. Evidence or refusal**: Every line item this feature can emit carries a page
+      number + a literal source-text substring. No default, guess, or `null` fill-in path
+      exists. Partial extractions produce a refusal entry for the missing piece.
+- [ ] **I. Same gate for every path**: LLM-proposed and rule-derived candidates both pass
+      the deterministic verification gate. No path writes a line item without it.
+- [ ] **II. Ambiguity is typed separately**: Contradictory values produce a distinct
+      ambiguity entry, not a refusal and not a silently chosen winner.
+- [ ] **III. Fault isolation**: Failures are caught per line item (per page as fallback)
+      and converted to refusals; no exception aborts the whole request.
+- [ ] **IV. Reason strings survive to the UI**: The API's reason string is rendered
+      verbatim. No re-classification into generic buckets anywhere on the path.
+- [ ] **IV. Shared contract**: Schemas are imported from `packages/contracts`, not copied.
+      The web app validates the response before rendering and names shape mismatches.
+- [ ] **Tests**: The verification gate has direct unit tests with fixed text fixtures,
+      including a candidate that fails the substring check. No live API calls in that
+      suite. (Tests are NOT optional for this project.)
+- [ ] **V. README honesty**: Any flaky, untested, or out-of-scope behavior this feature
+      introduces is recorded for the README, including any rules→LLM escalation and the
+      sample document that forced it.
+- [ ] **Deploy-target-agnostic API**: No Vercel-specific serverless entry point added to
+      `apps/extraction-api`.
 
 ## Project Structure
 
