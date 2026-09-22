@@ -1,0 +1,14 @@
+{
+  "documentName": "IB-55902.pdf",
+  "pageCount": 1,
+  "lineItems": [],
+  "refusals": [
+    {
+      "scope": "page",
+      "page": 1,
+      "code": "no_text_on_page",
+      "reason": "Page 1 contains no extractable text — it may be a scanned image. Reading text from scanned pages is not supported, so nothing was taken from this page."
+    }
+  ],
+  "ambiguities": []
+}

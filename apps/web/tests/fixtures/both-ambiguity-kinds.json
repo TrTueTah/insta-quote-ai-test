@@ -1,0 +1,145 @@
+{
+  "documentName": "fixture-both-ambiguity-kinds.pdf",
+  "pageCount": 1,
+  "lineItems": [
+    {
+      "id": "p1-r1",
+      "page": 1,
+      "code": {
+        "value": "TB-100",
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-100 Treated pine bearer 140x45 3 length $28.33 $84.99"
+        }
+      },
+      "description": {
+        "value": "Treated pine bearer 140x45",
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-100 Treated pine bearer 140x45 3 length $28.33 $84.99"
+        }
+      },
+      "quantity": {
+        "value": 3,
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-100 Treated pine bearer 140x45 3 length $28.33 $84.99"
+        }
+      },
+      "unit": {
+        "value": "length",
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-100 Treated pine bearer 140x45 3 length $28.33 $84.99"
+        }
+      },
+      "unitPrice": {
+        "value": 2833,
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-100 Treated pine bearer 140x45 3 length $28.33 $84.99"
+        }
+      },
+      "amount": {
+        "value": 8499,
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-100 Treated pine bearer 140x45 3 length $28.33 $84.99"
+        }
+      }
+    },
+    {
+      "id": "p1-r2",
+      "page": 1,
+      "code": {
+        "value": "TB-101",
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-101 Joist hanger galvanised 7 ea $4.16 $29.12"
+        }
+      },
+      "description": {
+        "value": "Joist hanger galvanised",
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-101 Joist hanger galvanised 7 ea $4.16 $29.12"
+        }
+      },
+      "quantity": {
+        "value": 7,
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-101 Joist hanger galvanised 7 ea $4.16 $29.12"
+        }
+      },
+      "unit": {
+        "value": "ea",
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-101 Joist hanger galvanised 7 ea $4.16 $29.12"
+        }
+      },
+      "unitPrice": {
+        "value": 416,
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-101 Joist hanger galvanised 7 ea $4.16 $29.12"
+        }
+      },
+      "amount": {
+        "value": 2912,
+        "evidence": {
+          "page": 1,
+          "sourceText": "TB-101 Joist hanger galvanised 7 ea $4.16 $29.12"
+        }
+      }
+    }
+  ],
+  "refusals": [],
+  "ambiguities": [
+    {
+      "kind": "rounding_difference",
+      "type": "total_vs_sum",
+      "fact": "document subtotal",
+      "values": [
+        {
+          "label": "stated subtotal",
+          "value": 11410,
+          "evidence": {
+            "page": 1,
+            "sourceText": "Subtotal: $114.10"
+          }
+        }
+      ],
+      "computed": {
+        "value": 11411,
+        "derivedFrom": "sum of 2 line item amounts"
+      },
+      "reason": "The document subtotal is out by $0.01: stated subtotal of $114.10, against $114.11 from the sum of 2 line item amounts. This is the size of difference per-line rounding produces, but it has not been adjusted away."
+    },
+    {
+      "kind": "material_mismatch",
+      "type": "conflicting_totals",
+      "fact": "document total",
+      "values": [
+        {
+          "label": "stated total",
+          "value": 13120,
+          "evidence": {
+            "page": 1,
+            "sourceText": "Total (incl GST): $131.20"
+          }
+        },
+        {
+          "label": "stated total",
+          "value": 14500,
+          "evidence": {
+            "page": 1,
+            "sourceText": "Amount payable: $145.00"
+          }
+        }
+      ],
+      "reason": "This document states more than one total: $131.20 on page 1 and $145.00 on page 1. Neither has been chosen over the other."
+    }
+  ]
+}

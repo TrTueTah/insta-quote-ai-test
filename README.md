@@ -1,9 +1,12 @@
-# Insta Quote AI — Line-Item Extraction Service (Part A)
+# Insta Quote AI
 
 Upload a trade PDF (invoice, packing list, delivery docket); get back every line item the
 service could extract **with the page and exact source text proving each value**, every value
 it could not extract **with a specific reason**, and every contradiction the document makes
 with itself **without either side being chosen**.
+
+- **Part A** — `apps/extraction-api`, the extraction service.
+- **Part B** — `apps/web`, the review page a non-technical person actually reads.
 
 The governing rule, from [the project constitution](.specify/memory/constitution.md):
 
@@ -14,10 +17,17 @@ The governing rule, from [the project constitution](.specify/memory/constitution
 
 ```bash
 pnpm install
-pnpm test                                    # 108 tests, no network, no API key needed
-pnpm --filter @insta-quote/extraction-api dev # http://localhost:3001
+pnpm test        # 205 tests, no network, no API key needed
 
-curl -F file=@sample-files-variant/IB-55871.pdf http://localhost:3001/extract | jq
+# two terminals
+pnpm --filter @insta-quote/extraction-api dev   # http://localhost:3001
+pnpm --filter @insta-quote/web dev              # http://localhost:3000  <- open this
+```
+
+`apps/web/.env.local` needs one line (copy `apps/web/.env.example`):
+
+```bash
+EXTRACTION_API_URL=http://localhost:3001
 ```
 
 `OPENAI_API_KEY` is optional — see [The LLM path](#the-llm-path-and-what-it-is-not) below.
@@ -146,6 +156,69 @@ Quantity 2000 and unit price $0.02 are both extracted with evidence. Their produ
 is refused** — because that number is not printed anywhere on the page. A test asserts the
 string `40.00` appears nowhere in the response.
 
+## Part B — the review page
+
+`apps/web`. One screen: choose a PDF, see what came back. Open <http://localhost:3000>.
+
+What it does with each sample document — every row is asserted by a test:
+
+| Upload | What you see |
+|---|---|
+| `IB-55871.pdf` | 4 line items with evidence. **No summary strip, no refusals section, no warning styling** — a clean document must not be decorated with problems it doesn't have |
+| `IB-56010.pdf` | 4 items, each showing `Amount — Not extracted` with the reason **inline**, plus all 4 in the refusals inventory |
+| `IB-56150.pdf` | 4 items plus one contradiction: stated $1,501.80 against $1,460.50 calculated, out by $41.30, neither marked correct |
+| `IB-56088.pdf` | 3 items plus the 9-vs-11 cartons conflict |
+| `IB-STMT47.pdf` | 21 items and one page-4 refusal — **visible without scrolling past the 21 rows** |
+| `IB-55902.pdf` | No line items. The refusal is the result, not an error |
+
+### Three design decisions worth explaining
+
+**Refusals appear twice, on purpose.** A line-item refusal shows inline against the missing
+value *and* in the refusals inventory. The duplication answers two different questions —
+"why is this number missing?" and "how much did this document withhold?" — and a test
+forbids the obvious tidy-up of replacing one copy with "see below".
+
+**Refusals and contradictions render above the line items.** This looks backwards until you
+try `IB-STMT47.pdf`: 21 rows and one refused page. Underneath, that refusal is off-screen.
+Requiring no interaction to see it means not requiring a scroll either.
+
+**Contradiction severity is labelled but never ranked.** A rounding difference and a material
+mismatch get the same size, the same reading position, neither collapsed — differing only in
+label and accent. The extraction service distinguishes them so a reviewer can triage, not so
+the lesser one can be de-emphasised, and giving it less visual weight here would undo that
+intent one design decision later.
+
+### Four failure states, four different messages
+
+Never one shared "something went wrong". Each is a separate component, rendered from an
+exhaustive switch with no default branch, so collapsing them is a deletion rather than a
+quiet refactor.
+
+| Situation | What the person reads |
+|---|---|
+| Not a PDF, empty, none selected | Named in the browser **before any request is sent** |
+| Extraction service unreachable or timed out | "Couldn't reach the service… try again in a moment" |
+| Service replied with something unreadable | "…can't read… retrying is unlikely to help" |
+| Service declined the upload | Its own message, verbatim |
+
+The middle two are the pair most likely to merge — both are "the service misbehaved" — but
+one means retry and the other means escalate, so they read differently.
+
+### The two states no sample document can reach
+
+Measured, not assumed: **no corpus document produces a `rounding_difference`**, and **none
+contains refusals and contradictions together**. Both are rendered from checked-in fixtures,
+schema-validated so they cannot drift:
+
+```bash
+open http://localhost:3000/dev/fixtures/both-ambiguity-kinds
+open http://localhost:3000/dev/fixtures/refusals-and-ambiguities
+open http://localhost:3000/dev/fixtures/unexplained-gap
+```
+
+Without these, the equal-prominence rule would have no coverage at all and could be dropped
+without a single test noticing.
+
 ## How the guarantee actually holds
 
 ```
@@ -218,6 +291,23 @@ rules cannot read simply produce refusals instead of candidates.
 Things that are flaky, untested, or deliberately out of scope. Please read this section
 before trusting anything above it.
 
+### A bug in Part A that Part B found
+
+`AmbiguitySchema` required `values` to hold at least two entries. But a total-versus-sum
+conflict often has **one** figure printed on the page and a computed sum on the other side:
+a document stating `Total: $245.00` whose line items add to $190.00 states that total exactly
+once.
+
+Part A detected that contradiction correctly and then **threw while validating its own
+response**, turning a real finding into an HTTP 500. No sample document hits it because
+`IB-56088` — the only single-total document — happens to add up exactly, so it sat undetected
+through all of Part A's 110 tests.
+
+It surfaced when a Part B fixture, written to look like a plausible response, failed schema
+validation. The invariant is now about the conflict rather than the array: `values` plus
+`computed` must describe at least two sides. Regression test at
+`apps/extraction-api/tests/unit/ambiguity/single-stated-total.test.ts`.
+
 ### A correction to the project's own planning documents
 
 `specs/001-line-item-extraction/research.md` (R3) claimed `IB-56010.pdf`'s layout
@@ -259,9 +349,23 @@ which is what the LLM path is for, and which the corpus cannot demonstrate.
 - **Conflicting unit prices are detected by product code only.** Two rows describing the same
   item with different codes will not be compared.
 - **Nothing is persisted.** No storage, no auth, no rate limiting.
-- **Part B (the web UI) is not built.** It was out of scope for this feature. The contract it
-  will consume is specified in `specs/001-line-item-extraction/contracts/extract-api.md`,
-  including the requirement that refusal reasons be rendered verbatim.
+### Part B limitations
+
+- **Equal prominence across contradiction severities is verified against a fixture, not a
+  real document.** No supplier invoice in the corpus produces a rounding difference, so the
+  rule that matters most for triage is demonstrated only by constructed data.
+- **Phone-sized layouts are not a target.** Desktop and tablet only.
+- **Nothing is saved.** Reloading loses the result; there is no history and no comparison
+  between documents.
+- **The page cannot show the PDF itself.** Evidence is a page number and quoted text; the
+  person checks against their own copy. An in-page preview was deliberately out of scope.
+- **The refusal inventory repeats every inline reason**, by design. On a document with many
+  partial rows this is visibly redundant.
+- **Row evidence is shown once per line item** when every value agrees on it, which is true
+  for all 29 line items in the corpus. If a future response carried differing evidence per
+  value, the page falls back to showing it per value — untested against real data, because no
+  real data produces it.
+- **The proxy has no retry, no rate limiting and no auth.**
 
 ## Verify the evidence guarantee yourself
 
@@ -296,8 +400,8 @@ specs/001-line-item-extraction/   spec, plan, research, data model, contracts
 | I. Evidence or refusal | **Held.** `EvidencedValue` requires evidence; the gate is the only writer of `lineItems`; both candidate paths share it |
 | II. Ambiguity is a result | **Held.** Separate collection, no `resolved`/`preferred` field exists to set. Extended beyond the spec with `conflicting_counts` |
 | III. Fault isolation | **Held.** Refusals are scoped document/page/lineItem/value; the gate never throws; `IB-STMT47` page 4 proves it end to end |
-| IV. API response is the contract | **Held in the API.** Reason strings are display-ready and emitted once. *Unproven for the UI, because the UI does not exist yet* |
+| IV. API response is the contract | **Held end to end.** Reason strings are display-ready, emitted once, passed through the proxy unchanged, and rendered verbatim. Tests assert every reason on screen appears character for character in the response, and that no state contains a generic phrase |
 | V. README honesty | This section, plus the correction and limitations above |
 
-Deliberately not implemented: the web UI (Part B), OCR, multi-currency, tax-rate validation,
-persistence, batch upload, and authentication.
+Deliberately not implemented: OCR, multi-currency, tax-rate validation, persistence, batch
+upload, authentication, and an in-page PDF preview.

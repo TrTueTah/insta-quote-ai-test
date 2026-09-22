@@ -2,9 +2,13 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "paths": {
-      "@insta-quote/contracts": ["./packages/contracts/src/index.ts"]
+      "@insta-quote/contracts": [
+        "./packages/contracts/src/index.ts"
+      ]
     }
   },
   "include": [
