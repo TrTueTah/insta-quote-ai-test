@@ -1,0 +1,171 @@
+{
+  "documentName": "IB-56088.pdf",
+  "pageCount": 1,
+  "lineItems": [
+    {
+      "id": "p1-r1",
+      "page": 1,
+      "code": {
+        "value": "EL-902",
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-902 Cable tray 200mm galv, 3m length 40 ea $34.00 $1,360.00"
+        }
+      },
+      "description": {
+        "value": "Cable tray 200mm galv, 3m length",
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-902 Cable tray 200mm galv, 3m length 40 ea $34.00 $1,360.00"
+        }
+      },
+      "quantity": {
+        "value": 40,
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-902 Cable tray 200mm galv, 3m length 40 ea $34.00 $1,360.00"
+        }
+      },
+      "unit": {
+        "value": "ea",
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-902 Cable tray 200mm galv, 3m length 40 ea $34.00 $1,360.00"
+        }
+      },
+      "unitPrice": {
+        "value": 3400,
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-902 Cable tray 200mm galv, 3m length 40 ea $34.00 $1,360.00"
+        }
+      },
+      "amount": {
+        "value": 136000,
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-902 Cable tray 200mm galv, 3m length 40 ea $34.00 $1,360.00"
+        }
+      }
+    },
+    {
+      "id": "p1-r2",
+      "page": 1,
+      "code": {
+        "value": "EL-905",
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-905 Cable tray brackets, heavy duty 60 ea $5.20 $312.00"
+        }
+      },
+      "description": {
+        "value": "Cable tray brackets, heavy duty",
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-905 Cable tray brackets, heavy duty 60 ea $5.20 $312.00"
+        }
+      },
+      "quantity": {
+        "value": 60,
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-905 Cable tray brackets, heavy duty 60 ea $5.20 $312.00"
+        }
+      },
+      "unit": {
+        "value": "ea",
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-905 Cable tray brackets, heavy duty 60 ea $5.20 $312.00"
+        }
+      },
+      "unitPrice": {
+        "value": 520,
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-905 Cable tray brackets, heavy duty 60 ea $5.20 $312.00"
+        }
+      },
+      "amount": {
+        "value": 31200,
+        "evidence": {
+          "page": 1,
+          "sourceText": "EL-905 Cable tray brackets, heavy duty 60 ea $5.20 $312.00"
+        }
+      }
+    },
+    {
+      "id": "p1-r3",
+      "page": 1,
+      "code": {
+        "value": "PL-114",
+        "evidence": {
+          "page": 1,
+          "sourceText": "PL-114 PVC waste pipe 100mm, 3m length 20 length $18.90 $378.00"
+        }
+      },
+      "description": {
+        "value": "PVC waste pipe 100mm, 3m length",
+        "evidence": {
+          "page": 1,
+          "sourceText": "PL-114 PVC waste pipe 100mm, 3m length 20 length $18.90 $378.00"
+        }
+      },
+      "quantity": {
+        "value": 20,
+        "evidence": {
+          "page": 1,
+          "sourceText": "PL-114 PVC waste pipe 100mm, 3m length 20 length $18.90 $378.00"
+        }
+      },
+      "unit": {
+        "value": "length",
+        "evidence": {
+          "page": 1,
+          "sourceText": "PL-114 PVC waste pipe 100mm, 3m length 20 length $18.90 $378.00"
+        }
+      },
+      "unitPrice": {
+        "value": 1890,
+        "evidence": {
+          "page": 1,
+          "sourceText": "PL-114 PVC waste pipe 100mm, 3m length 20 length $18.90 $378.00"
+        }
+      },
+      "amount": {
+        "value": 37800,
+        "evidence": {
+          "page": 1,
+          "sourceText": "PL-114 PVC waste pipe 100mm, 3m length 20 length $18.90 $378.00"
+        }
+      }
+    }
+  ],
+  "refusals": [],
+  "ambiguities": [
+    {
+      "kind": "material_mismatch",
+      "type": "conflicting_counts",
+      "fact": "cartons",
+      "values": [
+        {
+          "label": "9 cartons",
+          "value": 9,
+          "evidence": {
+            "page": 1,
+            "sourceText": "Summary: 9 cartons dispatched from Ironbark warehouse this run."
+          }
+        },
+        {
+          "label": "11 cartons",
+          "value": 11,
+          "evidence": {
+            "page": 1,
+            "sourceText": "Warehouse notes: 11 cartons picked and loaded onto the truck."
+          }
+        }
+      ],
+      "reason": "This document states different numbers of cartons: 9 on page 1 and 11 on page 1. Neither has been chosen over the other."
+    }
+  ]
+}

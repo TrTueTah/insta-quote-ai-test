@@ -9,9 +9,4 @@ export default defineConfig({
       ),
     },
   },
-  test: {
-    include: ['apps/**/tests/**/*.test.ts', 'packages/**/tests/**/*.test.ts'],
-    testTimeout: 60_000,
-    hookTimeout: 60_000,
-  },
 });

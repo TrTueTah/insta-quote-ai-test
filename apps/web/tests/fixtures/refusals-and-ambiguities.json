@@ -1,0 +1,70 @@
+{
+  "documentName": "fixture-refusals-and-ambiguities.pdf",
+  "pageCount": 2,
+  "lineItems": [
+    {
+      "id": "p1-r1",
+      "page": 1,
+      "code": { "value": "CV-220", "evidence": { "page": 1, "sourceText": "CV-220 Concrete vibrator hire 2 day $95.00 $190.00" } },
+      "description": { "value": "Concrete vibrator hire", "evidence": { "page": 1, "sourceText": "CV-220 Concrete vibrator hire 2 day $95.00 $190.00" } },
+      "quantity": { "value": 2, "evidence": { "page": 1, "sourceText": "CV-220 Concrete vibrator hire 2 day $95.00 $190.00" } },
+      "unit": { "value": "day", "evidence": { "page": 1, "sourceText": "CV-220 Concrete vibrator hire 2 day $95.00 $190.00" } },
+      "unitPrice": { "value": 9500, "evidence": { "page": 1, "sourceText": "CV-220 Concrete vibrator hire 2 day $95.00 $190.00" } },
+      "amount": { "value": 19000, "evidence": { "page": 1, "sourceText": "CV-220 Concrete vibrator hire 2 day $95.00 $190.00" } }
+    },
+    {
+      "id": "p1-r2",
+      "page": 1,
+      "code": { "value": "CV-221", "evidence": { "page": 1, "sourceText": "CV-221 Formwork ply sheets 12 sheet" } },
+      "description": { "value": "Formwork ply sheets", "evidence": { "page": 1, "sourceText": "CV-221 Formwork ply sheets 12 sheet" } },
+      "quantity": { "value": 12, "evidence": { "page": 1, "sourceText": "CV-221 Formwork ply sheets 12 sheet" } },
+      "unit": { "value": "sheet", "evidence": { "page": 1, "sourceText": "CV-221 Formwork ply sheets 12 sheet" } }
+    }
+  ],
+  "refusals": [
+    {
+      "scope": "value",
+      "page": 1,
+      "lineItemId": "p1-r2",
+      "field": "unitPrice",
+      "code": "value_not_provided",
+      "reason": "This document does not state a unit price for CV-221 on page 1 — the information is absent from the page rather than unreadable."
+    },
+    {
+      "scope": "value",
+      "page": 1,
+      "lineItemId": "p1-r2",
+      "field": "amount",
+      "code": "value_not_provided",
+      "reason": "This document does not state an amount for CV-221 on page 1 — the information is absent from the page rather than unreadable."
+    },
+    {
+      "scope": "page",
+      "page": 2,
+      "code": "no_text_on_page",
+      "reason": "Page 2 contains no extractable text — it may be a scanned image. Reading text from scanned pages is not supported, so nothing was taken from this page."
+    }
+  ],
+  "ambiguities": [
+    {
+      "kind": "material_mismatch",
+      "type": "total_vs_sum",
+      "fact": "document total",
+      "values": [
+        { "label": "stated total", "value": 24500, "evidence": { "page": 1, "sourceText": "Total: $245.00" } }
+      ],
+      "computed": { "value": 19000, "derivedFrom": "sum of 1 line item amount" },
+      "reason": "The document total does not add up: stated total of $245.00, against $190.00 from the sum of 1 line item amount — a difference of $55.00. Neither figure has been chosen over the other."
+    },
+    {
+      "kind": "material_mismatch",
+      "type": "conflicting_counts",
+      "fact": "pallets",
+      "values": [
+        { "label": "2 pallets", "value": 2, "evidence": { "page": 1, "sourceText": "Dispatch note: 2 pallets left the yard." } },
+        { "label": "3 pallets", "value": 3, "evidence": { "page": 1, "sourceText": "Driver record: 3 pallets signed for on delivery." } }
+      ],
+      "reason": "This document states different numbers of pallets: 2 on page 1 and 3 on page 1. Neither has been chosen over the other."
+    }
+  ]
+}

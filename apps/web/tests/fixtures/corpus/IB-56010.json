@@ -1,0 +1,197 @@
+{
+  "documentName": "IB-56010.pdf",
+  "pageCount": 1,
+  "lineItems": [
+    {
+      "id": "p1-r1",
+      "page": 1,
+      "code": {
+        "value": "FX-401",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-401 Coach screws, bulk carton 3 20kg $74.00 /carton"
+        }
+      },
+      "description": {
+        "value": "Coach screws, bulk carton",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-401 Coach screws, bulk carton 3 20kg $74.00 /carton"
+        }
+      },
+      "quantity": {
+        "value": 3,
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-401 Coach screws, bulk carton 3 20kg $74.00 /carton"
+        }
+      },
+      "unit": {
+        "value": "carton",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-401 Coach screws, bulk carton 3 20kg $74.00 /carton"
+        }
+      },
+      "unitPrice": {
+        "value": 7400,
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-401 Coach screws, bulk carton 3 20kg $74.00 /carton"
+        }
+      }
+    },
+    {
+      "id": "p1-r2",
+      "page": 1,
+      "code": {
+        "value": "FX-402",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-402 Washers, assorted, loose 2000 640g total $0.02 /ea"
+        }
+      },
+      "description": {
+        "value": "Washers, assorted, loose",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-402 Washers, assorted, loose 2000 640g total $0.02 /ea"
+        }
+      },
+      "quantity": {
+        "value": 2000,
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-402 Washers, assorted, loose 2000 640g total $0.02 /ea"
+        }
+      },
+      "unit": {
+        "value": "ea",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-402 Washers, assorted, loose 2000 640g total $0.02 /ea"
+        }
+      },
+      "unitPrice": {
+        "value": 2,
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-402 Washers, assorted, loose 2000 640g total $0.02 /ea"
+        }
+      }
+    },
+    {
+      "id": "p1-r3",
+      "page": 1,
+      "code": {
+        "value": "AD-118",
+        "evidence": {
+          "page": 1,
+          "sourceText": "AD-118 Epoxy resin kit, twin pack 5 1.4kg $28.50 /kit"
+        }
+      },
+      "description": {
+        "value": "Epoxy resin kit, twin pack",
+        "evidence": {
+          "page": 1,
+          "sourceText": "AD-118 Epoxy resin kit, twin pack 5 1.4kg $28.50 /kit"
+        }
+      },
+      "quantity": {
+        "value": 5,
+        "evidence": {
+          "page": 1,
+          "sourceText": "AD-118 Epoxy resin kit, twin pack 5 1.4kg $28.50 /kit"
+        }
+      },
+      "unit": {
+        "value": "kit",
+        "evidence": {
+          "page": 1,
+          "sourceText": "AD-118 Epoxy resin kit, twin pack 5 1.4kg $28.50 /kit"
+        }
+      },
+      "unitPrice": {
+        "value": 2850,
+        "evidence": {
+          "page": 1,
+          "sourceText": "AD-118 Epoxy resin kit, twin pack 5 1.4kg $28.50 /kit"
+        }
+      }
+    },
+    {
+      "id": "p1-r4",
+      "page": 1,
+      "code": {
+        "value": "AD-119",
+        "evidence": {
+          "page": 1,
+          "sourceText": "AD-119 Filler compound, small tub 8 500g $6.10 /tub"
+        }
+      },
+      "description": {
+        "value": "Filler compound, small tub",
+        "evidence": {
+          "page": 1,
+          "sourceText": "AD-119 Filler compound, small tub 8 500g $6.10 /tub"
+        }
+      },
+      "quantity": {
+        "value": 8,
+        "evidence": {
+          "page": 1,
+          "sourceText": "AD-119 Filler compound, small tub 8 500g $6.10 /tub"
+        }
+      },
+      "unit": {
+        "value": "tub",
+        "evidence": {
+          "page": 1,
+          "sourceText": "AD-119 Filler compound, small tub 8 500g $6.10 /tub"
+        }
+      },
+      "unitPrice": {
+        "value": 610,
+        "evidence": {
+          "page": 1,
+          "sourceText": "AD-119 Filler compound, small tub 8 500g $6.10 /tub"
+        }
+      }
+    }
+  ],
+  "refusals": [
+    {
+      "scope": "value",
+      "page": 1,
+      "lineItemId": "p1-r1",
+      "field": "amount",
+      "code": "value_not_provided",
+      "reason": "This document does not state an amount for FX-401 on page 1 — the information is absent from the page rather than unreadable."
+    },
+    {
+      "scope": "value",
+      "page": 1,
+      "lineItemId": "p1-r2",
+      "field": "amount",
+      "code": "value_not_provided",
+      "reason": "This document does not state an amount for FX-402 on page 1 — the information is absent from the page rather than unreadable."
+    },
+    {
+      "scope": "value",
+      "page": 1,
+      "lineItemId": "p1-r3",
+      "field": "amount",
+      "code": "value_not_provided",
+      "reason": "This document does not state an amount for AD-118 on page 1 — the information is absent from the page rather than unreadable."
+    },
+    {
+      "scope": "value",
+      "page": 1,
+      "lineItemId": "p1-r4",
+      "field": "amount",
+      "code": "value_not_provided",
+      "reason": "This document does not state an amount for AD-119 on page 1 — the information is absent from the page rather than unreadable."
+    }
+  ],
+  "ambiguities": []
+}

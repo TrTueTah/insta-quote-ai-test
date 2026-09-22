@@ -1,0 +1,192 @@
+{
+  "documentName": "IB-55871.pdf",
+  "pageCount": 1,
+  "lineItems": [
+    {
+      "id": "p1-r1",
+      "page": 1,
+      "code": {
+        "value": "FX-201",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-201 Framing nail gun coil, 90mm galv 24 box $52.00 $1,248.00"
+        }
+      },
+      "description": {
+        "value": "Framing nail gun coil, 90mm galv",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-201 Framing nail gun coil, 90mm galv 24 box $52.00 $1,248.00"
+        }
+      },
+      "quantity": {
+        "value": 24,
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-201 Framing nail gun coil, 90mm galv 24 box $52.00 $1,248.00"
+        }
+      },
+      "unit": {
+        "value": "box",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-201 Framing nail gun coil, 90mm galv 24 box $52.00 $1,248.00"
+        }
+      },
+      "unitPrice": {
+        "value": 5200,
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-201 Framing nail gun coil, 90mm galv 24 box $52.00 $1,248.00"
+        }
+      },
+      "amount": {
+        "value": 124800,
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-201 Framing nail gun coil, 90mm galv 24 box $52.00 $1,248.00"
+        }
+      }
+    },
+    {
+      "id": "p1-r2",
+      "page": 1,
+      "code": {
+        "value": "FX-118",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-118 Timber connector bolts M12x150 60 ea $3.40 $204.00"
+        }
+      },
+      "description": {
+        "value": "Timber connector bolts M12x150",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-118 Timber connector bolts M12x150 60 ea $3.40 $204.00"
+        }
+      },
+      "quantity": {
+        "value": 60,
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-118 Timber connector bolts M12x150 60 ea $3.40 $204.00"
+        }
+      },
+      "unit": {
+        "value": "ea",
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-118 Timber connector bolts M12x150 60 ea $3.40 $204.00"
+        }
+      },
+      "unitPrice": {
+        "value": 340,
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-118 Timber connector bolts M12x150 60 ea $3.40 $204.00"
+        }
+      },
+      "amount": {
+        "value": 20400,
+        "evidence": {
+          "page": 1,
+          "sourceText": "FX-118 Timber connector bolts M12x150 60 ea $3.40 $204.00"
+        }
+      }
+    },
+    {
+      "id": "p1-r3",
+      "page": 1,
+      "code": {
+        "value": "RF-330",
+        "evidence": {
+          "page": 1,
+          "sourceText": "RF-330 Roofing screws Type 17, 65mm 10 box $46.50 $465.00"
+        }
+      },
+      "description": {
+        "value": "Roofing screws Type 17, 65mm",
+        "evidence": {
+          "page": 1,
+          "sourceText": "RF-330 Roofing screws Type 17, 65mm 10 box $46.50 $465.00"
+        }
+      },
+      "quantity": {
+        "value": 10,
+        "evidence": {
+          "page": 1,
+          "sourceText": "RF-330 Roofing screws Type 17, 65mm 10 box $46.50 $465.00"
+        }
+      },
+      "unit": {
+        "value": "box",
+        "evidence": {
+          "page": 1,
+          "sourceText": "RF-330 Roofing screws Type 17, 65mm 10 box $46.50 $465.00"
+        }
+      },
+      "unitPrice": {
+        "value": 4650,
+        "evidence": {
+          "page": 1,
+          "sourceText": "RF-330 Roofing screws Type 17, 65mm 10 box $46.50 $465.00"
+        }
+      },
+      "amount": {
+        "value": 46500,
+        "evidence": {
+          "page": 1,
+          "sourceText": "RF-330 Roofing screws Type 17, 65mm 10 box $46.50 $465.00"
+        }
+      }
+    },
+    {
+      "id": "p1-r4",
+      "page": 1,
+      "code": {
+        "value": "IN-045",
+        "evidence": {
+          "page": 1,
+          "sourceText": "IN-045 R2.6 wall insulation batts, pack 22 pack $61.00 $1,342.00"
+        }
+      },
+      "description": {
+        "value": "R2.6 wall insulation batts, pack",
+        "evidence": {
+          "page": 1,
+          "sourceText": "IN-045 R2.6 wall insulation batts, pack 22 pack $61.00 $1,342.00"
+        }
+      },
+      "quantity": {
+        "value": 22,
+        "evidence": {
+          "page": 1,
+          "sourceText": "IN-045 R2.6 wall insulation batts, pack 22 pack $61.00 $1,342.00"
+        }
+      },
+      "unit": {
+        "value": "pack",
+        "evidence": {
+          "page": 1,
+          "sourceText": "IN-045 R2.6 wall insulation batts, pack 22 pack $61.00 $1,342.00"
+        }
+      },
+      "unitPrice": {
+        "value": 6100,
+        "evidence": {
+          "page": 1,
+          "sourceText": "IN-045 R2.6 wall insulation batts, pack 22 pack $61.00 $1,342.00"
+        }
+      },
+      "amount": {
+        "value": 134200,
+        "evidence": {
+          "page": 1,
+          "sourceText": "IN-045 R2.6 wall insulation batts, pack 22 pack $61.00 $1,342.00"
+        }
+      }
+    }
+  ],
+  "refusals": [],
+  "ambiguities": []
+}

@@ -1,0 +1,24 @@
+{
+  "documentName": "fixture-unexplained-gap.pdf",
+  "pageCount": 1,
+  "lineItems": [
+    {
+      "id": "p1-r1",
+      "page": 1,
+      "code": { "value": "XX-001", "evidence": { "page": 1, "sourceText": "XX-001 Item with an unexplained gap 4 ea $10.00 $40.00" } },
+      "description": { "value": "Item with an unexplained gap", "evidence": { "page": 1, "sourceText": "XX-001 Item with an unexplained gap 4 ea $10.00 $40.00" } },
+      "quantity": { "value": 4, "evidence": { "page": 1, "sourceText": "XX-001 Item with an unexplained gap 4 ea $10.00 $40.00" } },
+      "unit": { "value": "ea", "evidence": { "page": 1, "sourceText": "XX-001 Item with an unexplained gap 4 ea $10.00 $40.00" } },
+      "amount": { "value": 4000, "evidence": { "page": 1, "sourceText": "XX-001 Item with an unexplained gap 4 ea $10.00 $40.00" } }
+    }
+  ],
+  "refusals": [
+    {
+      "scope": "page",
+      "page": 1,
+      "code": "no_text_on_page",
+      "reason": "Page 1 contains no extractable text — it may be a scanned image. Reading text from scanned pages is not supported, so nothing was taken from this page."
+    }
+  ],
+  "ambiguities": []
+}
