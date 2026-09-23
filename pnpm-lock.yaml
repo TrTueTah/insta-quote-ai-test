@@ -59,6 +59,9 @@ importers:
       pdfjs-dist:
         specifier: ^4.10.38
         version: 4.10.38
+      tsx:
+        specifier: ^4.19.0
+        version: 4.23.15
       zod:
         specifier: ^3.24.0
         version: 3.25.76

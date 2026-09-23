@@ -241,3 +241,46 @@ describe('no automatic recovery', () => {
     expect(raw).not.toContain('vercel rollback');
   });
 });
+
+describe('Railway deployment configuration', () => {
+  const railway = JSON.parse(
+    readFileSync(resolve(process.cwd(), 'railway.json'), 'utf8'),
+  ) as Record<string, any>;
+
+  const rootPackage = JSON.parse(
+    readFileSync(resolve(process.cwd(), 'package.json'), 'utf8'),
+  ) as Record<string, any>;
+
+  it('railway.json sits at the repository root, where Railway actually reads it', () => {
+    // `railway up` uploads the repository root, and Railway reads its config from the root of
+    // what was uploaded. A railway.json inside apps/extraction-api/ is never read: the first
+    // real deployment failed with "No start command detected" for exactly this reason.
+    expect(railway.deploy?.startCommand).toBeTruthy();
+  });
+
+  it('declares a start command that runs the extraction service', () => {
+    expect(railway.deploy.startCommand).toContain('extraction-api');
+  });
+
+  it('the root package.json also has a start script', () => {
+    // Railpack's first documented check is a "start" script in package.json. Declaring the
+    // command in both places means neither detector has to be the one that works.
+    expect(rootPackage.scripts?.start).toContain('extraction-api');
+  });
+
+  it('tsx is a runtime dependency of the service, not a root devDependency', () => {
+    // The service starts with `tsx src/index.ts`. A production install prunes
+    // devDependencies, so tsx living only in the root devDependencies would fail at runtime
+    // the moment the start command was found -- a second failure queued behind the first.
+    const api = JSON.parse(
+      readFileSync(resolve(process.cwd(), 'apps/extraction-api/package.json'), 'utf8'),
+    ) as Record<string, any>;
+
+    expect(api.dependencies?.tsx).toBeTruthy();
+    expect(api.devDependencies?.tsx).toBeFalsy();
+  });
+
+  it('points its health check at a route the service actually serves', () => {
+    expect(railway.deploy.healthcheckPath).toBe('/health');
+  });
+});

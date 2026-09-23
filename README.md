@@ -341,6 +341,11 @@ The pipeline does not write `EXTRACTION_API_URL`; it verifies the consequence of
 right. Managing it here would mask someone changing it by hand — exactly the drift the smoke
 test should expose.
 
+**Deployment configuration lives at the repository root.** `railway up` uploads the root of
+the repo, and Railway reads `railway.json` from the root of what was uploaded — a config file
+inside `apps/extraction-api/` is never read. The root `package.json` also carries a matching
+`start` script, because Railpack's first check is that script rather than the JSON.
+
 **4. Optionally** require the `verify` check on `main` in branch protection. The pipeline
 already refuses to deploy an unverified commit, so this protects the branch rather than the
 deployment.

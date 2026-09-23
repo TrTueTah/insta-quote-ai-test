@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "dump-text": "node scripts/dump-page-text.mjs",
-    "check:openai": "node scripts/check-openai.mjs"
+    "check:openai": "node scripts/check-openai.mjs",
+    "start": "pnpm --filter @insta-quote/extraction-api start"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",

@@ -176,6 +176,50 @@ not say which of three values is wrong, or whether the credential or the target 
 This project does not accept that from the extraction service or from the web page, and it
 should not accept it from its own pipeline.
 
+### What the second run showed — **now verified**
+
+With the target resolving, the upload succeeded and the build failed instead:
+
+```
+Railpack 0.39.0
+  ↳ Detected Node
+  ↳ Using pnpm package manager
+  ↳ Found workspace with 3 packages
+  ✖ No start command detected.
+```
+
+**`railway up` uploads the repository root, and Railway reads its configuration from the root
+of what was uploaded.** `apps/extraction-api/railway.json` was therefore never read — it had
+looked like deployment configuration for a year of this project's life without ever being
+consulted. The root `package.json` has no `start` script and no `main`, so Railpack found
+nothing and stopped.
+
+**Decision**: a `railway.json` at the repository root declaring
+`pnpm --filter @insta-quote/extraction-api start`, **and** a matching `start` script in the
+root `package.json`. Railpack's first documented check is that script, so declaring the
+command in both places means neither detector has to be the one that works. The stale
+`apps/extraction-api/railway.json` is deleted rather than left to mislead.
+
+### A second failure was queued behind the first — **found before it ran**
+
+The service starts with `tsx src/index.ts`, and `tsx` was a **root devDependency**. A
+production install prunes devDependencies, so the moment the start command was found the
+deployment would have failed again with `tsx: not found`.
+
+**Decision**: `tsx` moves into `apps/extraction-api`'s `dependencies`.
+
+**Verified** in a `node:22-slim` container against a clean copy, with
+`pnpm install --frozen-lockfile --prod`:
+
+```
+tsx after prod install: present
+health: 200
+extract: 4 line items, 0 refusals, 0 ambiguities
+```
+
+That is the control document extracting correctly from a pruned production install — the
+same thing the deployed service has to do.
+
 ## R6. Deploying the web application
 
 **Decision**: the Vercel CLI's three-step prebuilt flow:
