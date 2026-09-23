@@ -72,6 +72,24 @@ pipeline does what it claims.
 | **`halves disagree`** | the service is at the new commit, the site is not | re-run. Until then the two may disagree about the shared schema, and the site may report a reply it cannot read |
 | `pair not proven` | both deployed, but the smoke test failed | check `EXTRACTION_API_URL` on Vercel first — a site pointing at the wrong service is the usual cause |
 
+### If the Railway deploy fails with a 404
+
+```
+Indexing... Uploading... Failed to upload code with status code 404 Not Found
+```
+
+The token is fine — an invalid one fails earlier with `Unauthorized`. The 404 means the
+project, service or environment did not resolve. In order of likelihood:
+
+1. **`RAILWAY_PROJECT` holds the project name rather than its ID.** `railway up` requires the
+   UUID; `railway status` accepts either, which is why this passes a casual check.
+2. `RAILWAY_ENVIRONMENT` does not match an environment in that project.
+3. `RAILWAY_SERVICE` does not exist in that environment.
+4. The token's account cannot see the project.
+
+The *Resolve the Railway target* step now reports which of these it is, and lists the projects
+the token can see.
+
 `pair not proven` is deliberately not `both live`. A green deployment step is not evidence
 the thing works.
 

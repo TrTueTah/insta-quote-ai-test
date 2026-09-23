@@ -141,6 +141,41 @@ preflight step (R7) will name it clearly if authentication fails.
 **Alternatives considered**: Railway's GraphQL API directly (more code, no benefit);
 `railway redeploy` (redeploys what is already there rather than shipping this commit).
 
+### What the first real run showed — **now verified**
+
+The first `main` deployment failed:
+
+```
+Indexing...
+Uploading...
+Failed to upload code with status code 404 Not Found
+```
+
+Two things follow from where it failed. It got past `Indexing` and `Uploading`, so the token
+**authenticated** — an invalid token fails earlier with `Unauthorized. Please login with
+railway login`. The 404 is therefore about the target, not the credential: the project,
+service or environment did not resolve.
+
+The CLI's own help text explains how this happens quietly:
+
+| Command | `-p, --project` documented as |
+|---|---|
+| `railway status` | "Project **ID/name** to inspect" |
+| `railway up` | "Project **ID** to deploy to" |
+
+A project **name** in `RAILWAY_PROJECT` is accepted by some commands and 404s on upload. That
+is the first thing to suspect.
+
+**Decision**: add a *Resolve the Railway target* step before the upload, running
+`railway whoami` and then `railway status --project ... --environment ...`, so an unresolvable
+target is reported by name with the likely causes ranked — and with `railway list` showing
+which projects the token can actually see.
+
+**Rationale**: a bare 404 is the deployment-shaped version of "something went wrong". It does
+not say which of three values is wrong, or whether the credential or the target is at fault.
+This project does not accept that from the extraction service or from the web page, and it
+should not accept it from its own pipeline.
+
 ## R6. Deploying the web application
 
 **Decision**: the Vercel CLI's three-step prebuilt flow:

@@ -131,6 +131,64 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
+      # `railway up` reports a bare "404 Not Found" when the project, service or environment
+      # does not resolve, which says nothing about which of the three is wrong. This step
+      # turns that into a named cause before any upload is attempted.
+      #
+      # Note the distinction it draws: a bad token fails at whoami with "Unauthorized",
+      # whereas a good token with a wrong target authenticates and then 404s. Those are
+      # different problems and the run should not report them the same way.
+      #
+      # `railway up` documents --project as a project ID, while `railway status` accepts an
+      # ID or a name. A project NAME in RAILWAY_PROJECT therefore authenticates, passes a
+      # casual check, and 404s on upload -- which is the first thing to suspect here.
+      - name: Resolve the Railway target
+        run: |
+          echo "Checking the token authenticates..."
+          if ! railway whoami; then
+            echo ""
+            echo "RAILWAY_API_TOKEN was rejected. The token is invalid, revoked, or belongs"
+            echo "to a different account. Nothing was uploaded."
+            exit 1
+          fi
+
+          echo ""
+          echo "Checking the project resolves..."
+          if ! railway status --project "$RAILWAY_PROJECT" --environment "$RAILWAY_ENVIRONMENT" --json > status.json 2> status.err; then
+            echo ""
+            echo "The token is valid, but this project and environment could not be found."
+            echo ""
+            cat status.err || true
+            echo ""
+            echo "Most likely causes, in order:"
+            echo "  1. RAILWAY_PROJECT holds the project NAME. 'railway up' needs the project ID"
+            echo "     (a UUID), which is in the Railway project's Settings page or its URL."
+            echo "  2. RAILWAY_ENVIRONMENT does not match an environment in that project."
+            echo "  3. The token's account cannot see this project."
+            echo ""
+            echo "Projects this token CAN see:"
+            railway list || echo "  (could not list projects)"
+            exit 1
+          fi
+
+          echo ""
+          echo "Checking the service exists in that environment..."
+          if ! grep -qF "$RAILWAY_SERVICE" status.json; then
+            echo ""
+            echo "The project resolved, but no service matching RAILWAY_SERVICE was found in"
+            echo "environment '$RAILWAY_ENVIRONMENT'."
+            echo ""
+            echo "Service names found in this project's status:"
+            grep -oE '"name"[[:space:]]*:[[:space:]]*"[^"]+"' status.json \
+              | sed -E 's/.*"([^"]+)"$/  - \1/' \
+              | sort -u \
+              || echo "  (could not read the project status)"
+            exit 1
+          fi
+
+          echo ""
+          echo "Project, environment and service all resolve. Proceeding to deploy."
+
       # Flags verified against Railway CLI 5.59.0. --ci streams build logs then exits, which
       # is what a pipeline wants. --project takes the project ID, not its display name.
       - name: Deploy to Railway

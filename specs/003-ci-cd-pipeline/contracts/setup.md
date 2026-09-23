@@ -28,8 +28,10 @@ RAILWAY_API_TOKEN      RAILWAY_PROJECT      RAILWAY_SERVICE      RAILWAY_ENVIRON
 VERCEL_TOKEN           VERCEL_ORG_ID        VERCEL_PROJECT_ID
 ```
 
-`RAILWAY_PROJECT` is the project **ID**, not its display name (Railway CLI documents `-p` as
-`PROJECT_ID`).
+`RAILWAY_PROJECT` is the project **ID** — a UUID — not its display name. This is not a
+nicety: `railway status` accepts either, but `railway up` requires the ID and fails with a
+bare `404 Not Found` during upload when given a name. Confirmed by the first real run. The ID
+is on the Railway project's Settings page and in its dashboard URL.
 
 If any is missing the deploy job stops and names it, rather than failing inside a CLI with an
 authentication error (FR-019).
@@ -57,8 +59,9 @@ commit (FR-010), so this protects the branch rather than the deployment.
 
 Flagged so they are not mistaken for settled facts:
 
-1. **`RAILWAY_API_TOKEN` as the CLI's authentication variable.** Consistent with also being
-   given project, service and environment, but not confirmed against a live account.
+1. ~~**`RAILWAY_API_TOKEN` as the CLI's authentication variable.**~~ **Confirmed** by the
+   first real run: the upload reached Railway and failed on the target, not on the
+   credential, so the token authenticated correctly.
 2. **The shape of `vercel deploy`'s stdout**, from which the deployment URL is captured.
 3. **Whether the platform git integrations are actually off**, which is a dashboard setting.
 

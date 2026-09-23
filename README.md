@@ -322,8 +322,12 @@ RAILWAY_API_TOKEN   RAILWAY_PROJECT   RAILWAY_SERVICE   RAILWAY_ENVIRONMENT
 VERCEL_TOKEN        VERCEL_ORG_ID     VERCEL_PROJECT_ID
 ```
 
-`RAILWAY_PROJECT` is the project **ID**, not its display name. If any is missing, the deploy
-job stops and names it before running any CLI.
+`RAILWAY_PROJECT` is the project **ID** — a UUID from the project's Settings page or its
+dashboard URL — **not its display name**. `railway up` requires the ID and fails with a bare
+`404 Not Found` during upload when given a name, which is how the first real run failed. If a
+secret is missing, the deploy job stops and names it before running any CLI; if the target
+does not resolve, the *Resolve the Railway target* step says which of the three values is
+wrong.
 
 **3. Set two platform environment variables** — these live on the platforms, deliberately not
 in the pipeline:
@@ -472,12 +476,11 @@ which is what the LLM path is for, and which the corpus cannot demonstrate.
   installed, so the script fails with `command not found`. Adding it as `|| true` to keep the
   pipeline green would report assurance it does not provide, so it is left out and said out
   loud instead.
-- **Three things stay unverified until the first real deployment**: that `RAILWAY_API_TOKEN`
-  is the variable the Railway CLI authenticates with (its `--help` documents no token
-  variable; this comes from Railway's docs and is consistent with also being given project,
-  service and environment), the exact stdout shape `vercel deploy` prints its URL in, and
-  whether the platform git integrations are genuinely disabled. **If the first run fails,
-  start there.**
+- **Two things stay unverified until a successful deployment**: the exact stdout shape
+  `vercel deploy` prints its URL in, and whether the platform git integrations are genuinely
+  disabled. The third — that `RAILWAY_API_TOKEN` is the variable the Railway CLI
+  authenticates with — **was confirmed** by the first real run, which reached Railway and
+  failed on the target rather than the credential.
 - **Nothing rolls back.** The window where the deployed halves are from different commits is
   accepted, not eliminated.
 - **No staging environment.** `main` deploys straight to production.
