@@ -312,6 +312,43 @@ missing" rather than "nothing was deployed".
 token. The evidence is strong — the `cd ../..` in a file that must therefore be read from
 `apps/web`, and a root with no Next.js project — but the next run is what settles it.
 
+### What the fifth run showed — a job is not the job before it
+
+With the commands running in `apps/web`, `vercel.json` was finally read, and its install
+command ran:
+
+```
+Running "install" command: `cd ../.. && pnpm install --frozen-lockfile`...
+sh: 1: pnpm: not found
+```
+
+`deploy-web` had no pnpm. Jobs run on separate runners and share nothing but the repository,
+so setting pnpm up in `verify` does nothing for a later job — and `npm install -g vercel`
+had worked without any setup, because npm ships with the runner's Node. The one tool that
+needed installing appeared not to.
+
+The dependency was also **indirect**: nothing in the workflow's own script calls `pnpm` in
+that job. `vercel build` calls it, from a command in a file the workflow never reads. Grepping
+the workflow for the tools it uses would not have found this.
+
+**Decision**: `pnpm/action-setup` and `actions/setup-node` with `.nvmrc` in `deploy-web`, and
+`actions/setup-node` in `deploy-api` so the Railway CLI runs on the version this project
+targets. `deploy-api` needs no pnpm: Railway builds remotely from the uploaded source, so
+nothing in that job runs a workspace command.
+
+**Verified** by reproducing the failure and the fix in a `node:22-slim` container from
+`apps/web`:
+
+```
+before:  sh: 1: pnpm: not found
+after:   install command: OK
+         build command:   OK
+```
+
+A sweep of every job's commands against what the runner provides found no further gaps — but
+that sweep reads only the scripts in the workflow, so it would not have caught this one
+either. Indirect dependencies are the blind spot.
+
 ## R7. Naming a missing credential before anything is attempted
 
 FR-019 requires a missing credential to stop the deployment with a message naming it, rather

@@ -249,6 +249,30 @@ describe('Vercel deployment configuration', () => {
     expect(text).toContain('home_status');
   });
 
+  it('sets up pnpm, because vercel build shells out to it', () => {
+    // vercel build runs the installCommand from apps/web/vercel.json, which is
+    // `cd ../.. && pnpm install --frozen-lockfile`. Jobs run on separate runners and share
+    // nothing but the repository, so pnpm being set up in `verify` does nothing here.
+    //
+    // `npm install -g vercel` works without any setup because npm ships with the runner's
+    // Node, which is what made this gap easy to miss.
+    const uses = steps.map((step) => String(step['uses'] ?? ''));
+
+    expect(uses.some((u) => u.startsWith('pnpm/action-setup'))).toBe(true);
+    expect(uses.some((u) => u.startsWith('actions/setup-node'))).toBe(true);
+  });
+
+  it('pins the runtime from .nvmrc in every job that runs Node', () => {
+    // A deploy job on a different Node version from the one `verify` proved is a silent way
+    // to ship something that was never tested on that runtime.
+    for (const job of ['verify', 'deploy-api', 'deploy-web']) {
+      const setupNode = ((jobs[job].steps ?? []) as Array<Record<string, any>>).find((step) =>
+        String(step['uses'] ?? '').startsWith('actions/setup-node'),
+      );
+      expect(setupNode?.['with']?.['node-version-file'], job).toBe('.nvmrc');
+    }
+  });
+
   it('the smoke test itself runs at the repository root, where the sample files are', () => {
     const smoke = steps.find((step) => String(step['run'] ?? '').includes('IB-55871.pdf'));
     expect(smoke?.['working-directory']).toBeUndefined();
