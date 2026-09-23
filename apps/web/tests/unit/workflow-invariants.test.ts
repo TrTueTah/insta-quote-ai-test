@@ -226,6 +226,35 @@ describe('the deploy jobs', () => {
   });
 });
 
+describe('Vercel deployment configuration', () => {
+  const steps = (jobs['deploy-web'].steps ?? []) as Array<Record<string, any>>;
+
+  it('runs every vercel command in apps/web, not at the repository root', () => {
+    // apps/web/vercel.json is read from apps/web and its commands cd to the monorepo root
+    // themselves. Run from the root, that file is never read: Vercel auto-detects at the
+    // root, finds no Next.js project there, and deploys an empty one that answers 404 on
+    // every path. That is how the first real deployment failed.
+    const vercelSteps = steps.filter((step) => String(step['run'] ?? '').includes('vercel '));
+
+    expect(vercelSteps.length).toBeGreaterThan(0);
+    for (const step of vercelSteps) {
+      expect(step['working-directory'], String(step['name'])).toBe('apps/web');
+    }
+  });
+
+  it('checks the site serves a home page before testing the upload route', () => {
+    // A deployment of the wrong directory 404s on every path. Without this the failure reads
+    // as "the extract route is missing" rather than "nothing was deployed".
+    const text = jobText('deploy-web');
+    expect(text).toContain('home_status');
+  });
+
+  it('the smoke test itself runs at the repository root, where the sample files are', () => {
+    const smoke = steps.find((step) => String(step['run'] ?? '').includes('IB-55871.pdf'));
+    expect(smoke?.['working-directory']).toBeUndefined();
+  });
+});
+
 describe('the report job', () => {
   it('runs even when a deploy failed', () => {
     expect(String(jobs['report']?.['if'])).toContain('always()');

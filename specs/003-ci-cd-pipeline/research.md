@@ -278,6 +278,40 @@ is never offered as an explanation for a site that never answered.
 A preceding step also resolves the production alias via `vercel inspect --json` and prefers it
 over the deployment-specific URL, since the latter is the one protection covers.
 
+### What the fourth run showed — the mirror image of the Railway bug
+
+The alias resolution worked and Deployment Protection was off, so the site was reachable. It
+then answered **404 on every path, including `/`** — not a missing route, but nothing
+deployed at all.
+
+`apps/web/vercel.json` reads:
+
+```json
+"buildCommand":   "cd ../.. && pnpm --filter @insta-quote/web build",
+"installCommand": "cd ../.. && pnpm install --frozen-lockfile"
+```
+
+Those `cd ../..` exist because Vercel reads that file **from `apps/web`** and then needs the
+monorepo root to install and build. The workflow ran `vercel pull`, `build` and `deploy` at
+the repository root, so the file was never read: Vercel auto-detected at the root, found no
+Next.js project there — no `app/`, no `pages/`, no `next` dependency — and deployed an empty
+one.
+
+**This is the same mistake as the Railway failure, inverted.** Railway needed its config
+moved *to* the root because `railway up` uploads the root. Vercel needed its commands run
+*from the app directory* because that is where its config lives. Both times the tool and its
+configuration were looking at different directories; both times the symptom was a bare "not
+found" that said nothing about the cause.
+
+**Decision**: `working-directory: apps/web` on every Vercel command, and a check that the
+site serves its home page before the upload is attempted — a deployment of the wrong
+directory 404s everywhere, and without that check the failure reads as "the extract route is
+missing" rather than "nothing was deployed".
+
+**Unverified**: this could not be tested locally, since `vercel build` needs the account
+token. The evidence is strong — the `cd ../..` in a file that must therefore be read from
+`apps/web`, and a root with no Next.js project — but the next run is what settles it.
+
 ## R7. Naming a missing credential before anything is attempted
 
 FR-019 requires a missing credential to stop the deployment with a message naming it, rather

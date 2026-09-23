@@ -246,16 +246,29 @@ jobs:
       # Building here rather than on Vercel means the artifact deployed is the one built from
       # this verified commit, and a build failure is a pipeline failure with readable logs
       # instead of a deployment that fails somewhere else.
+      # These run in apps/web, NOT at the repository root.
+      #
+      # apps/web/vercel.json is where the project's build configuration lives, and its
+      # commands start with `cd ../..` precisely because Vercel reads it from apps/web and
+      # then needs the monorepo root to install and build. Run from the root instead, that
+      # file is never read: Vercel auto-detects at the root, finds no Next.js project there
+      # (no app/, no pages/, no next dependency) and deploys an empty one. Every path then
+      # answers 404, which is how the first real deployment failed.
+      #
+      # `vercel deploy --prebuilt` also has to run where `vercel build` wrote .vercel/output.
       - name: Pull Vercel project settings
+        working-directory: apps/web
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build
+        working-directory: apps/web
         run: vercel build --prod --token="$VERCEL_TOKEN"
 
       # The CLI prints the deployment URL to stdout, but not necessarily alone. The capture
       # picks the last https:// token rather than assuming the whole output is the URL.
       - name: Deploy
         id: deploy
+        working-directory: apps/web
         run: |
           vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" | tee deploy.log
           url="$(grep -oE 'https://[A-Za-z0-9._-]+\.vercel\.app' deploy.log | tail -n 1)"
@@ -274,6 +287,7 @@ jobs:
       # alias yet.
       - name: Resolve the public address
         id: site
+        working-directory: apps/web
         run: |
           deployment="${{ steps.deploy.outputs.url }}"
           public="$deployment"
@@ -312,6 +326,24 @@ jobs:
         run: |
           url="${{ steps.site.outputs.url }}"
           echo "Uploading the control document to $url/api/extract"
+
+          # Check the site serves its own home page before testing the upload. A deployment
+          # that built the wrong directory answers 404 on EVERY path, and without this the
+          # failure reads as "the extract route is missing" rather than "nothing was
+          # deployed" -- two very different problems.
+          home_status="$(curl -sS --max-time 60 -o /dev/null -w '%{http_code}' "$url/" || echo "000")"
+          if [ "$home_status" = "404" ]; then
+            echo ""
+            echo "The site's home page answers 404, so nothing usable was deployed at all —"
+            echo "this is not a problem with the upload route."
+            echo ""
+            echo "The usual cause is the Vercel commands running in the wrong directory."
+            echo "apps/web/vercel.json is read from apps/web, and its commands cd to the"
+            echo "monorepo root themselves. Run from the root instead, Vercel finds no Next.js"
+            echo "project and deploys an empty one."
+            exit 1
+          fi
+          echo "Home page: HTTP $home_status"
 
           status="$(curl -sS --max-time 120 -o response.body -w '%{http_code}' \
             -F file=@sample-files-variant/IB-55871.pdf \
