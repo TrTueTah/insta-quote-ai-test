@@ -1,0 +1,320 @@
+# Verify every change; deploy only from main.
+#
+# One workflow rather than two, deliberately. FR-010 requires deployment to be impossible
+# without verification passing for that exact commit. As a job dependency inside a single run
+# that is structural -- the deploy jobs cannot start. Split across two workflow files it
+# becomes a lookup of "did some other run pass for this SHA", which is a weaker guarantee.
+#
+# See specs/003-ci-cd-pipeline/contracts/workflow.md for the rules this file must keep, and
+# apps/web/tests/unit/workflow-invariants.test.ts, which enforces the ones that can be checked
+# automatically.
+
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel superseded pull-request checks -- nothing is deployed, so cancelling is free.
+# On main, QUEUE instead: cancelling could interrupt a deployment mid-flight. Queued runs
+# execute in order, so the newest commit's run finishes last and is the one left deployed
+# (FR-023).
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------------------
+  # verify -- runs for every pull request and every push to main.
+  #
+  # This job references NO secrets. Not "receives them but does not use them" -- they do not
+  # appear in it at all, which is what makes fork pull requests safe by construction rather
+  # than by policy (FR-022).
+  # ---------------------------------------------------------------------------------------
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      # .nvmrc is the single home of the pinned runtime version, so the workflow and a
+      # developer's shell cannot drift apart (FR-007).
+      - name: Use Node from .nvmrc
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # --frozen-lockfile so a run reflects the committed dependency set rather than
+      # resolving something new (FR-002).
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The two typecheck steps are separate on purpose.
+      #
+      # Before this feature, `pnpm typecheck` covered only the first of them -- a gap proven
+      # by appending a type error to apps/web and watching the command exit 0. Combined into
+      # one step, a failure would report "typecheck failed" without saying which project, and
+      # that is exactly the shape that hid the gap (FR-003, FR-008).
+      - name: Typecheck — service and shared package
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Typecheck — web application
+        run: npx tsc --noEmit -p apps/web/tsconfig.json
+
+      # No OPENAI_API_KEY anywhere: the suite makes no model-provider call (FR-006).
+      - name: Test
+        run: pnpm vitest run
+
+      # A change can typecheck, pass tests, and still fail to build (FR-005).
+      - name: Build — web application
+        run: pnpm --filter @insta-quote/web build
+
+  # ---------------------------------------------------------------------------------------
+  # deploy-api -- the extraction service, to Railway.
+  #
+  # `needs: verify` is what makes FR-010 structural: this job cannot start unless
+  # verification passed for this exact commit.
+  # ---------------------------------------------------------------------------------------
+  deploy-api:
+    name: Deploy extraction service
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: verify
+    if: github.event_name == 'push'
+
+    env:
+      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+      RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
+      RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE }}
+      RAILWAY_ENVIRONMENT: ${{ secrets.RAILWAY_ENVIRONMENT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # An unset GitHub secret expands to an empty string. Without this check the run fails
+      # deep inside the CLI with an authentication error that names nothing.
+      #
+      # Every missing name is listed at once, so someone setting this up fixes everything in
+      # one pass rather than discovering them one run at a time (FR-019).
+      #
+      # Note what this does NOT do: print any value. Enforcing FR-019 at the cost of FR-021
+      # would be a poor trade.
+      - name: Check Railway credentials are present
+        run: |
+          missing=()
+          [ -n "$RAILWAY_API_TOKEN" ]   || missing+=("RAILWAY_API_TOKEN")
+          [ -n "$RAILWAY_PROJECT" ]     || missing+=("RAILWAY_PROJECT")
+          [ -n "$RAILWAY_SERVICE" ]     || missing+=("RAILWAY_SERVICE")
+          [ -n "$RAILWAY_ENVIRONMENT" ] || missing+=("RAILWAY_ENVIRONMENT")
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "Cannot deploy: these repository secrets are missing or empty:"
+            printf '  - %s\n' "${missing[@]}"
+            echo ""
+            echo "Add them under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          echo "All four Railway credentials are present."
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      # Flags verified against Railway CLI 5.59.0. --ci streams build logs then exits, which
+      # is what a pipeline wants. --project takes the project ID, not its display name.
+      - name: Deploy to Railway
+        run: |
+          railway up --ci \
+            --service "$RAILWAY_SERVICE" \
+            --environment "$RAILWAY_ENVIRONMENT" \
+            --project "$RAILWAY_PROJECT"
+
+  # ---------------------------------------------------------------------------------------
+  # deploy-web -- the review page, to Vercel.
+  #
+  # `needs: deploy-api`, NOT `needs: verify`. That one word is FR-012: the site is never
+  # moved ahead of the service it depends on, because a failed service deploy leaves this job
+  # unstarted rather than merely unhappy. The two share packages/contracts, so a site running
+  # newer code than the service can receive a reply it cannot read.
+  # ---------------------------------------------------------------------------------------
+  deploy-web:
+    name: Deploy review page
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: deploy-api
+    if: github.event_name == 'push'
+
+    outputs:
+      site-url: ${{ steps.deploy.outputs.url }}
+
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Vercel credentials are present
+        run: |
+          missing=()
+          [ -n "$VERCEL_TOKEN" ]      || missing+=("VERCEL_TOKEN")
+          [ -n "$VERCEL_ORG_ID" ]     || missing+=("VERCEL_ORG_ID")
+          [ -n "$VERCEL_PROJECT_ID" ] || missing+=("VERCEL_PROJECT_ID")
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "Cannot deploy: these repository secrets are missing or empty:"
+            printf '  - %s\n' "${missing[@]}"
+            echo ""
+            echo "Add them under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+          echo "All three Vercel credentials are present."
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      # Building here rather than on Vercel means the artifact deployed is the one built from
+      # this verified commit, and a build failure is a pipeline failure with readable logs
+      # instead of a deployment that fails somewhere else.
+      - name: Pull Vercel project settings
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      # The CLI prints the deployment URL to stdout, but not necessarily alone. The capture
+      # picks the last https:// token rather than assuming the whole output is the URL.
+      - name: Deploy
+        id: deploy
+        run: |
+          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" | tee deploy.log
+          url="$(grep -oE 'https://[A-Za-z0-9._-]+\.vercel\.app' deploy.log | tail -n 1)"
+          if [ -z "$url" ]; then
+            echo "The deployment finished but no URL could be read from the CLI output."
+            echo "The site may well be live; the smoke test below cannot run without the address."
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed to $url"
+
+      # FR-014: a successful deployment step is not evidence the thing works.
+      #
+      # This goes through the DEPLOYED SITE rather than the service directly, which is the
+      # only way to catch the site pointing at the wrong service -- the most likely
+      # misconfiguration and the least visible one (FR-016).
+      #
+      # IB-55871.pdf is the control document: exactly 4 line items, 0 refusals, 0 ambiguities.
+      # Asserting "some line items came back" would pass against a stale deployment.
+      - name: Prove the deployed pair works
+        run: |
+          url="${{ steps.deploy.outputs.url }}"
+          echo "Uploading the control document to $url/api/extract"
+
+          response="$(curl -sS --max-time 120 \
+            -F file=@sample-files-variant/IB-55871.pdf \
+            "$url/api/extract")"
+
+          items=$(echo "$response" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['lineItems']))" 2>/dev/null || echo "?")
+          refusals=$(echo "$response" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['refusals']))" 2>/dev/null || echo "?")
+          ambiguities=$(echo "$response" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['ambiguities']))" 2>/dev/null || echo "?")
+
+          echo "line items: $items, refusals: $refusals, ambiguities: $ambiguities"
+
+          if [ "$items" != "4" ] || [ "$refusals" != "0" ] || [ "$ambiguities" != "0" ]; then
+            echo ""
+            echo "The control document did not produce its expected result (4 / 0 / 0)."
+            echo "Both halves are deployed, but they are not working together."
+            echo "Check EXTRACTION_API_URL on the Vercel project first -- a site pointing at"
+            echo "the wrong service is the usual cause."
+            exit 1
+          fi
+          echo "The deployed site and service are working together."
+
+  # ---------------------------------------------------------------------------------------
+  # report -- says what actually happened.
+  #
+  # Runs with if: always() so it still speaks after a failure. It is the only place the
+  # "halves disagree" outcome can be produced, and that outcome is the one this pipeline was
+  # most at risk of reporting as a generic failure.
+  #
+  # "Deploy failed" is not acceptable output: it cannot distinguish "nothing moved" from "the
+  # service moved and the site did not", and those need different responses.
+  #
+  # Reads no secrets.
+  # ---------------------------------------------------------------------------------------
+  report:
+    name: Report outcome
+    runs-on: ubuntu-latest
+    needs: [deploy-api, deploy-web]
+    if: always() && github.event_name == 'push'
+
+    steps:
+      - name: Write the outcome
+        env:
+          API_RESULT: ${{ needs.deploy-api.result }}
+          WEB_RESULT: ${{ needs.deploy-web.result }}
+          SITE_URL: ${{ needs.deploy-web.outputs.site-url }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          {
+            echo "## Deployment outcome"
+            echo ""
+            echo "Commit \`${COMMIT:0:7}\`"
+            echo ""
+
+            if [ "$API_RESULT" = "success" ] && [ "$WEB_RESULT" = "success" ]; then
+              echo "### Both live"
+              echo ""
+              echo "The extraction service and the review page are both deployed from this commit,"
+              echo "and an upload through the site returned the control document's expected result."
+              echo ""
+              echo "- Review page: $SITE_URL"
+              echo "- Extraction service: see the Railway project for its address"
+
+            elif [ "$API_RESULT" != "success" ]; then
+              echo "### Neither half moved"
+              echo ""
+              echo "Deploying the extraction service failed, so the review page was never deployed."
+              echo "Both halves are still running the previous commit, and they still agree with"
+              echo "each other. Nothing is inconsistent."
+              echo ""
+              echo "Failed job: \`deploy-api\` (result: $API_RESULT)"
+
+            else
+              echo "### The two halves disagree"
+              echo ""
+              echo "**The extraction service is deployed at this commit. The review page is not.**"
+              echo ""
+              echo "They share a data format, so until this is resolved the page may receive a"
+              echo "reply it cannot read, and will say so rather than showing a wrong result."
+              echo ""
+              echo "Failed job: \`deploy-web\` (result: $WEB_RESULT)"
+              echo ""
+              echo "Nothing has been rolled back and nothing was retried. Re-run this workflow"
+              echo "once the cause is fixed."
+              echo ""
+              echo "If the deploy itself succeeded and the check after it failed, both halves are"
+              echo "live but were not proven to work together — check EXTRACTION_API_URL on the"
+              echo "Vercel project first."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The summary above is for a person. This makes the run itself red when a half moved
+      # without the other, so it cannot be mistaken for a clean release.
+      - name: Fail the run if the halves disagree
+        if: needs.deploy-api.result == 'success' && needs.deploy-web.result != 'success'
+        run: |
+          echo "The extraction service moved to this commit and the review page did not."
+          exit 1

@@ -17,7 +17,7 @@ The governing rule, from [the project constitution](.specify/memory/constitution
 
 ```bash
 pnpm install
-pnpm test        # 205 tests, no network, no API key needed
+pnpm test        # 230 tests, no network, no API key needed
 
 # two terminals
 pnpm --filter @insta-quote/extraction-api dev   # http://localhost:3001
@@ -286,6 +286,105 @@ proposer that returns an invented amount (`llm-gated.test.ts`).
 **No test makes a live OpenAI call.** The service runs without `OPENAI_API_KEY`; pages the
 rules cannot read simply produce refusals instead of candidates.
 
+## CI/CD
+
+One workflow, `.github/workflows/ci-cd.yml`. Every pull request is verified. Only `main`
+deploys.
+
+```
+pull request ──► verify ──► (nothing is deployed)
+
+push to main ──► verify ──► deploy-api (Railway) ──► deploy-web (Vercel) ──► smoke test
+                                                                              │
+                                                                            report
+```
+
+`verify` installs from a clean checkout with a frozen lockfile, type-checks **both**
+applications as separately named steps, runs all 230 tests, and builds the web app. It
+references no secrets at all — which is what makes fork pull requests safe by construction
+rather than by policy.
+
+### Setup — do step 1 first
+
+**1. Turn off both platforms' own git auto-deploy.** Railway and Vercel will each happily
+watch the repository and deploy on push by themselves. Leave either enabled and commits reach
+production **without passing verification** — the pipeline's main guarantee becomes
+decorative while still appearing satisfied. The pipeline cannot detect this; it is a dashboard
+setting on each platform.
+
+A symptom worth recognising: a deployment appearing seconds after a push, before `verify` has
+finished.
+
+**2. Add seven repository secrets** (Settings → Secrets and variables → Actions):
+
+```
+RAILWAY_API_TOKEN   RAILWAY_PROJECT   RAILWAY_SERVICE   RAILWAY_ENVIRONMENT
+VERCEL_TOKEN        VERCEL_ORG_ID     VERCEL_PROJECT_ID
+```
+
+`RAILWAY_PROJECT` is the project **ID**, not its display name. If any is missing, the deploy
+job stops and names it before running any CLI.
+
+**3. Set two platform environment variables** — these live on the platforms, deliberately not
+in the pipeline:
+
+| Platform | Variable | Value |
+|---|---|---|
+| Vercel | `EXTRACTION_API_URL` | the deployed Railway service's address, no trailing slash |
+| Railway | `OPENAI_API_KEY` | optional; without it, unfamiliar layouts yield refusals |
+
+The pipeline does not write `EXTRACTION_API_URL`; it verifies the consequence of it being
+right. Managing it here would mask someone changing it by hand — exactly the drift the smoke
+test should expose.
+
+**4. Optionally** require the `verify` check on `main` in branch protection. The pipeline
+already refuses to deploy an unverified commit, so this protects the branch rather than the
+deployment.
+
+### Reading the outcome
+
+The `report` job writes one of four outcomes to the run summary:
+
+| Outcome | Meaning | What to do |
+|---|---|---|
+| **Both live** | both deployed from this commit, and an upload through the site returned the control result | nothing |
+| **Neither half moved** | the service deploy failed; the site was never touched | fix and re-run — nothing is inconsistent |
+| **The two halves disagree** | the service is at this commit, the site is not | re-run. Until then the site may report a reply it cannot read |
+| *(smoke test failed)* | both deployed but not proven to work together | check `EXTRACTION_API_URL` on Vercel first |
+
+"Deploy failed" is deliberately not one of these. It cannot distinguish "nothing moved" from
+"the service moved and the site did not", and those need different responses.
+
+**Nothing rolls back and nothing retries.** A half-finished deployment is reported for a
+person to resolve. An automatic rollback is an unrequested action that can itself fail,
+leaving a worse and less obvious state than the one it was fixing.
+
+### The smoke test
+
+After both deploys, the pipeline uploads `IB-55871.pdf` to the **deployed site** — not the
+service — and requires exactly 4 line items, 0 refusals, 0 ambiguities.
+
+Going through the site is the point: it is the only check that catches the site pointing at
+the wrong service, which is the most likely misconfiguration and the least visible. A health
+check on the service alone would pass while the site talked to nothing.
+
+The control document is used because its expected result is exact. "Some line items came
+back" would pass against a stale deployment of either half.
+
+### Guarding the workflow's shape
+
+`apps/web/tests/unit/workflow-invariants.test.ts` parses the YAML and asserts the rules that
+are each one line away from being broken by someone acting reasonably: `verify` contains no
+`secrets.` reference, `deploy-web` declares `needs: deploy-api` rather than `needs: verify`,
+`pull_request_target` appears nowhere, no step carries `continue-on-error`, and no rollback or
+retry exists. 25 assertions, run as part of the normal suite.
+
+The workflow also passes `actionlint`, which includes shellcheck on every embedded script:
+
+```bash
+docker run --rm -v "$PWD":/repo -w /repo rhysd/actionlint:latest .github/workflows/ci-cd.yml
+```
+
 ## Honest limitations
 
 Things that are flaky, untested, or deliberately out of scope. Please read this section
@@ -367,6 +466,26 @@ which is what the LLM path is for, and which the corpus cannot demonstrate.
   real data produces it.
 - **The proxy has no retry, no rate limiting and no auth.**
 
+### CI/CD limitations
+
+- **Lint is not part of verification.** `pnpm lint` does not run — ESLint was never
+  installed, so the script fails with `command not found`. Adding it as `|| true` to keep the
+  pipeline green would report assurance it does not provide, so it is left out and said out
+  loud instead.
+- **Three things stay unverified until the first real deployment**: that `RAILWAY_API_TOKEN`
+  is the variable the Railway CLI authenticates with (its `--help` documents no token
+  variable; this comes from Railway's docs and is consistent with also being given project,
+  service and environment), the exact stdout shape `vercel deploy` prints its URL in, and
+  whether the platform git integrations are genuinely disabled. **If the first run fails,
+  start there.**
+- **Nothing rolls back.** The window where the deployed halves are from different commits is
+  accepted, not eliminated.
+- **No staging environment.** `main` deploys straight to production.
+- **The smoke test uses one document.** It proves the pair is connected and working for the
+  control case, not that extraction is correct — that is what the 230 tests are for.
+- **Pull requests get no preview deployment.** Reviewing means reading the change and running
+  it locally.
+
 ## Verify the evidence guarantee yourself
 
 Don't take the service's word for it:
@@ -402,6 +521,7 @@ specs/001-line-item-extraction/   spec, plan, research, data model, contracts
 | III. Fault isolation | **Held.** Refusals are scoped document/page/lineItem/value; the gate never throws; `IB-STMT47` page 4 proves it end to end |
 | IV. API response is the contract | **Held end to end.** Reason strings are display-ready, emitted once, passed through the proxy unchanged, and rendered verbatim. Tests assert every reason on screen appears character for character in the response, and that no state contains a generic phrase |
 | V. README honesty | This section, plus the correction and limitations above |
+| IV, applied to the pipeline | **Held.** Every verification step is separately named, and the release report distinguishes "nothing moved" from "the service moved and the site did not". A bare "deploy failed" is a contract violation, not a wording preference |
 
 Deliberately not implemented: OCR, multi-currency, tax-rate validation, persistence, batch
 upload, authentication, and an in-page PDF preview.

@@ -2,18 +2,24 @@
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
 
-**Active plan**: `specs/002-review-web-page/plan.md` (Part B — the review web page)
+**Active plan**: `specs/003-ci-cd-pipeline/plan.md` (CI/CD — GitHub Actions, Railway, Vercel)
 
 Supporting documents for that plan:
 
-- `specs/002-review-web-page/spec.md` — feature specification (FR-001..FR-029)
-- `specs/002-review-web-page/research.md` — measured Part A output, layout decisions
-- `specs/002-review-web-page/data-model.md` — PageState union, LineItemView, fixtures
-- `specs/002-review-web-page/contracts/` — proxy route and result view contracts
-- `specs/002-review-web-page/quickstart.md` — run both halves, walk every state
+- `specs/003-ci-cd-pipeline/spec.md` — feature specification (FR-001..FR-030)
+- `specs/003-ci-cd-pipeline/research.md` — measured gaps, verified CLI flags, Node 22 proof
+- `specs/003-ci-cd-pipeline/data-model.md` — job graph, credentials, run outcomes
+- `specs/003-ci-cd-pipeline/contracts/` — workflow contract and one-time setup
+- `specs/003-ci-cd-pipeline/quickstart.md` — local verification and pipeline self-tests
 
-**Completed**: `specs/001-line-item-extraction/` (Part A — the extraction service,
-merged to main). Its contracts in `packages/contracts` are imported by this feature.
+**Completed and merged to main**:
+
+- `specs/001-line-item-extraction/` — Part A, the extraction service (`apps/extraction-api`)
+- `specs/002-review-web-page/` — Part B, the review page (`apps/web`)
+
+Known gap this feature fixes: `pnpm typecheck` does NOT cover `apps/web`. Verify types with
+`npx tsc --noEmit -p tsconfig.json && npx tsc --noEmit -p apps/web/tsconfig.json`.
+`pnpm lint` does not run at all — ESLint is not installed.
 
 Project constitution (binding): `.specify/memory/constitution.md`
 <!-- SPECKIT END -->
