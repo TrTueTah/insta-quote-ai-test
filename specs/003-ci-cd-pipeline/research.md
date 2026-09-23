@@ -243,6 +243,41 @@ captures for the smoke test. The exact output shape has not been confirmed again
 account, so the capture must tolerate surrounding output rather than assuming the URL is the
 only thing printed.
 
+### What the third run showed — **R6 now verified**
+
+`vercel deploy` printed its URL as expected and the capture worked, settling the last
+unverified assumption about its output. Both halves deployed. The smoke test then failed
+with:
+
+```
+line items: ?, refusals: ?, ambiguities: ?
+The control document did not produce its expected result (4 / 0 / 0).
+Check EXTRACTION_API_URL on the Vercel project first ...
+```
+
+**That message was wrong, and confidently so.** The site was answering every request with a
+302 to `vercel.com/sso-api` — Vercel Deployment Protection, which intercepts requests to a
+`*.vercel.app` deployment address before they reach the application. `EXTRACTION_API_URL` had
+nothing to do with it, and a reader following that advice would have spent their time in the
+wrong place.
+
+Two causes, both mine:
+
+1. **The check threw away its evidence.** Three `python3 ... || echo "?"` fallbacks turned any
+   non-JSON response into `?` and discarded the status, the content type and the body.
+2. **It guessed at a cause.** Having no evidence, it named the most likely one. That is the
+   deployment-shaped version of the failure this whole project exists to prevent: a specific,
+   plausible, wrong answer given in place of "here is what actually happened".
+
+**Decision**: the smoke test now captures the HTTP status, the content type and the response
+body; names deployment protection explicitly when it sees a 302, a 401 or an `sso-api`
+redirect; prints the first 400 bytes when the reply is not JSON; and suggests
+`EXTRACTION_API_URL` **only after** a well-formed result has come back and disagreed — so it
+is never offered as an explanation for a site that never answered.
+
+A preceding step also resolves the production alias via `vercel inspect --json` and prefers it
+over the deployment-specific URL, since the latter is the one protection covers.
+
 ## R7. Naming a missing credential before anything is attempted
 
 FR-019 requires a missing credential to stop the deployment with a message naming it, rather

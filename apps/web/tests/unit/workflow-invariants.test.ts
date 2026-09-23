@@ -205,6 +205,25 @@ describe('the deploy jobs', () => {
     expect(text).toContain('IB-55871.pdf');
     expect(text).toContain('/api/extract');
   });
+
+  it('the smoke test reports what came back rather than guessing at a cause', () => {
+    // An earlier version printed "?" for each count and told the reader to check
+    // EXTRACTION_API_URL. The real cause was a 302 to Vercel's login, so the message sent
+    // the reader somewhere irrelevant. A diagnostic that names the wrong cause confidently is
+    // worse than one that shows the evidence.
+    const text = jobText('deploy-web');
+
+    expect(text).toContain('%{http_code}');       // the status is captured
+    expect(text).toContain('content_type');        // and the content type
+    expect(text).toContain('sso-api');             // deployment protection is named, not guessed at
+    expect(text).toContain('head -c');             // the body is shown when it is not JSON
+
+    // EXTRACTION_API_URL is only suggested once a well-formed result has come back, so it is
+    // never offered as an explanation for a site that never answered.
+    const extractIdx = text.indexOf('EXTRACTION_API_URL');
+    const jsonIdx = text.indexOf('not JSON');
+    expect(extractIdx).toBeGreaterThan(jsonIdx);
+  });
 });
 
 describe('the report job', () => {

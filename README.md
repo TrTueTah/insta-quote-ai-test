@@ -346,7 +346,17 @@ the repo, and Railway reads `railway.json` from the root of what was uploaded �
 inside `apps/extraction-api/` is never read. The root `package.json` also carries a matching
 `start` script, because Railpack's first check is that script rather than the JSON.
 
-**4. Optionally** require the `verify` check on `main` in branch protection. The pipeline
+**4. Turn off Vercel Deployment Protection**, or the smoke test cannot reach the site.
+Vercel → Project → Settings → Deployment Protection → Vercel Authentication. While it is on,
+every request to a `*.vercel.app` address is answered with a 302 to `vercel.com/sso-api`
+before it reaches the page — including the pipeline's upload. The alternatives are a custom
+domain or a Protection Bypass secret.
+
+**Environment variables only apply to new deployments.** Changing `EXTRACTION_API_URL` on
+Vercel does nothing to a deployment that already exists; re-run the pipeline, or redeploy from
+the Vercel dashboard, for it to take effect.
+
+**5. Optionally** require the `verify` check on `main` in branch protection. The pipeline
 already refuses to deploy an unverified commit, so this protects the branch rather than the
 deployment.
 

@@ -267,6 +267,34 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed to $url"
 
+      # The deployment-specific URL that `vercel deploy` prints is covered by Vercel's
+      # Deployment Protection, which answers every request with a 302 to vercel.com/sso-api.
+      # The production alias is the address a visitor actually uses, so resolve it and prefer
+      # it. Falls back to the deployment URL rather than failing, since a project may have no
+      # alias yet.
+      - name: Resolve the public address
+        id: site
+        run: |
+          deployment="${{ steps.deploy.outputs.url }}"
+          public="$deployment"
+
+          if vercel inspect "$deployment" --json --token="$VERCEL_TOKEN" > inspect.json 2>/dev/null; then
+            alias="$(grep -oE '"[A-Za-z0-9.-]+\.vercel\.app"' inspect.json \
+                      | tr -d '"' \
+                      | grep -v -- '-[a-z0-9]\{9,\}-' \
+                      | head -n 1 || true)"
+            if [ -n "$alias" ]; then
+              public="https://$alias"
+              echo "Production alias: $public"
+            else
+              echo "No production alias found; using the deployment URL."
+            fi
+          else
+            echo "Could not inspect the deployment; using the deployment URL."
+          fi
+
+          echo "url=$public" >> "$GITHUB_OUTPUT"
+
       # FR-014: a successful deployment step is not evidence the thing works.
       #
       # This goes through the DEPLOYED SITE rather than the service directly, which is the
@@ -275,27 +303,75 @@ jobs:
       #
       # IB-55871.pdf is the control document: exactly 4 line items, 0 refusals, 0 ambiguities.
       # Asserting "some line items came back" would pass against a stale deployment.
+      #
+      # The failure path reports what actually came back. An earlier version printed "?" for
+      # each count and told the reader to check EXTRACTION_API_URL -- which was a confident
+      # guess, and wrong: the real cause was a 302 to Vercel's login. A diagnostic that names
+      # the wrong cause is worse than one that admits it does not know.
       - name: Prove the deployed pair works
         run: |
-          url="${{ steps.deploy.outputs.url }}"
+          url="${{ steps.site.outputs.url }}"
           echo "Uploading the control document to $url/api/extract"
 
-          response="$(curl -sS --max-time 120 \
+          status="$(curl -sS --max-time 120 -o response.body -w '%{http_code}' \
             -F file=@sample-files-variant/IB-55871.pdf \
-            "$url/api/extract")"
+            "$url/api/extract" || echo "000")"
 
-          items=$(echo "$response" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['lineItems']))" 2>/dev/null || echo "?")
-          refusals=$(echo "$response" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['refusals']))" 2>/dev/null || echo "?")
-          ambiguities=$(echo "$response" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['ambiguities']))" 2>/dev/null || echo "?")
+          content_type="$(curl -sS --max-time 30 -o /dev/null -w '%{content_type}' \
+            -X POST "$url/api/extract" 2>/dev/null || echo "unknown")"
+
+          echo "HTTP $status, content-type: $content_type"
+
+          # Name the causes that are not the application before blaming the application.
+          if [ "$status" = "302" ] || [ "$status" = "401" ] || grep -qi 'vercel.com/sso-api' response.body 2>/dev/null; then
+            echo ""
+            echo "The site answered with a redirect to Vercel's login, not with a result."
+            echo ""
+            echo "This is Vercel Deployment Protection, not a problem with the application."
+            echo "Every request to this address is intercepted before it reaches the page."
+            echo ""
+            echo "Fix it in one of these ways:"
+            echo "  - Vercel -> Project -> Settings -> Deployment Protection -> turn off"
+            echo "    Vercel Authentication for production, or"
+            echo "  - add a custom domain and check that instead, or"
+            echo "  - set a Protection Bypass secret and send it with the request."
+            exit 1
+          fi
+
+          if [ "$status" = "000" ]; then
+            echo ""
+            echo "The site could not be reached at all within 120 seconds."
+            exit 1
+          fi
+
+          if ! python3 -c "import json,sys; json.load(open('response.body'))" 2>/dev/null; then
+            echo ""
+            echo "The site answered with something that is not JSON. First 400 bytes:"
+            echo "---"
+            head -c 400 response.body || true
+            echo ""
+            echo "---"
+            exit 1
+          fi
+
+          items=$(python3 -c "import json;print(len(json.load(open('response.body'))['lineItems']))")
+          refusals=$(python3 -c "import json;print(len(json.load(open('response.body'))['refusals']))")
+          ambiguities=$(python3 -c "import json;print(len(json.load(open('response.body'))['ambiguities']))")
 
           echo "line items: $items, refusals: $refusals, ambiguities: $ambiguities"
 
           if [ "$items" != "4" ] || [ "$refusals" != "0" ] || [ "$ambiguities" != "0" ]; then
             echo ""
             echo "The control document did not produce its expected result (4 / 0 / 0)."
-            echo "Both halves are deployed, but they are not working together."
-            echo "Check EXTRACTION_API_URL on the Vercel project first -- a site pointing at"
-            echo "the wrong service is the usual cause."
+            echo "Both halves are deployed, and the site replied with a well-formed result,"
+            echo "so they are talking -- but not agreeing."
+            echo ""
+            echo "Check EXTRACTION_API_URL on the Vercel project: a site pointing at a"
+            echo "different or older extraction service is the usual cause. Note that changing"
+            echo "it requires a NEW deployment to take effect."
+            echo ""
+            echo "The response was:"
+            head -c 600 response.body || true
             exit 1
           fi
           echo "The deployed site and service are working together."
