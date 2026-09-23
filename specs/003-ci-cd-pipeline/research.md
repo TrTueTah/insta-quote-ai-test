@@ -349,6 +349,44 @@ A sweep of every job's commands against what the runner provides found no furthe
 that sweep reads only the scripts in the workflow, so it would not have caught this one
 either. Indirect dependencies are the blind spot.
 
+### R6 revised — building locally was the wrong call for a pnpm workspace
+
+With pnpm available, `vercel build` succeeded and `vercel deploy --prebuilt` failed:
+
+```
+Error: Please ensure project dependencies have been installed:
+File does not exist: "node_modules/.pnpm/@swc+helpers@0.5.15/.../package.json"
+```
+
+The file **is** present — at the repository root, where pnpm keeps its single content store.
+Next's file traces climb up to eight levels to reach it, and all 1150 traced entries resolve
+correctly on disk. The prebuilt upload, running from `apps/web`, could not follow them.
+
+**A fix I nearly shipped, and shouldn't have.** Setting `outputFileTracingRoot` to the
+monorepo root is the standard advice, so it went in. Comparing `required-server-files.json`
+with and without it showed the option changed nothing but a trailing slash — Next already
+infers the workspace root from the lockfile, and `relativeAppDir` was already `apps/web`.
+It was a no-op dressed as a fix, and it was reverted. Had it gone out untested, the next run
+would have failed identically and the change would have looked like it had ruled something
+out.
+
+**Revised decision**: drop `--prebuilt` and the local `vercel build`; deploy from the
+repository root and let Vercel build.
+
+**Rationale**: R6 originally argued for building in the pipeline so that a build failure
+would be a pipeline failure. That reason no longer holds, because `verify` **already** runs
+`pnpm --filter @insta-quote/web build` for the same commit. A broken build still fails before
+any deployment is attempted. The local build was buying a guarantee the pipeline already had,
+at the cost of an upload path that pnpm workspaces break.
+
+Deploying from the repository root also matters: `apps/web/vercel.json`'s commands begin with
+`cd ../..`, so the upload has to contain the monorepo, and Vercel has to be told that
+`apps/web` is the project root.
+
+**Added**: a check, after `vercel pull`, that the project's configured root directory is
+`apps/web` — turning the silent empty deployment that failed an earlier run into a named
+error with the fix in it.
+
 ## R7. Naming a missing credential before anything is attempted
 
 FR-019 requires a missing credential to stop the deployment with a message naming it, rather

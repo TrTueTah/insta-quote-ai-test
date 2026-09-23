@@ -5,6 +5,7 @@ const config: NextConfig = {
   // import rather than a published build artifact.
   transpilePackages: ['@insta-quote/contracts'],
 
+
   webpack: (webpackConfig) => {
     // packages/contracts uses ESM-correct specifiers (`./evidence.js`) so it stays valid
     // Node ESM. Webpack needs telling that those resolve to the TypeScript sources rather

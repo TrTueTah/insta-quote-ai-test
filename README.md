@@ -341,6 +341,13 @@ The pipeline does not write `EXTRACTION_API_URL`; it verifies the consequence of
 right. Managing it here would mask someone changing it by hand — exactly the drift the smoke
 test should expose.
 
+**Set the Vercel project's Root Directory to `apps/web`** (Vercel → Project → Settings →
+Build and Deployment → Root Directory). `apps/web/vercel.json` is only read when `apps/web`
+is the project root, and its build commands `cd` to the monorepo root from there. With it
+unset, Vercel builds the repository root, finds no Next.js project, and deploys an empty site
+that answers 404 on every path. The pipeline now checks this after `vercel pull` and fails
+with that explanation rather than deploying nothing.
+
 **Deployment configuration lives at the repository root.** `railway up` uploads the root of
 the repo, and Railway reads `railway.json` from the root of what was uploaded — a config file
 inside `apps/extraction-api/` is never read. The root `package.json` also carries a matching

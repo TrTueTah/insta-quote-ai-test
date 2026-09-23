@@ -229,17 +229,35 @@ describe('the deploy jobs', () => {
 describe('Vercel deployment configuration', () => {
   const steps = (jobs['deploy-web'].steps ?? []) as Array<Record<string, any>>;
 
-  it('runs every vercel command in apps/web, not at the repository root', () => {
-    // apps/web/vercel.json is read from apps/web and its commands cd to the monorepo root
-    // themselves. Run from the root, that file is never read: Vercel auto-detects at the
-    // root, finds no Next.js project there, and deploys an empty one that answers 404 on
-    // every path. That is how the first real deployment failed.
+  it('deploys from the repository root, so the whole workspace is uploaded', () => {
+    // apps/web/vercel.json's commands begin with `cd ../..`. If only apps/web were uploaded
+    // there would be no `../..` to reach.
     const vercelSteps = steps.filter((step) => String(step['run'] ?? '').includes('vercel '));
 
     expect(vercelSteps.length).toBeGreaterThan(0);
     for (const step of vercelSteps) {
-      expect(step['working-directory'], String(step['name'])).toBe('apps/web');
+      expect(step['working-directory'], String(step['name'])).toBeUndefined();
     }
+  });
+
+  it('does not use --prebuilt', () => {
+    // Building locally then deploying --prebuilt fails on a pnpm workspace: the build traces
+    // dependencies into the single content store at the repository root, and the prebuilt
+    // upload cannot resolve them, reporting as missing a file that is present just not where
+    // it looked.
+    expect(jobText('deploy-web')).not.toContain('--prebuilt');
+  });
+
+  it('still builds the web application somewhere in the pipeline', () => {
+    // Dropping the local build is only safe because `verify` already builds this same
+    // commit. The guarantee that a broken build cannot deploy now rests entirely there.
+    expect(jobText('verify')).toContain('@insta-quote/web build');
+  });
+
+  it('checks the Vercel project root directory before deploying', () => {
+    // With it unset, Vercel builds the repository root, finds no Next.js project, and
+    // deploys an empty site that answers 404 everywhere -- silently.
+    expect(jobText('deploy-web')).toContain('rootDirectory');
   });
 
   it('checks the site serves a home page before testing the upload route', () => {
@@ -249,16 +267,11 @@ describe('Vercel deployment configuration', () => {
     expect(text).toContain('home_status');
   });
 
-  it('sets up pnpm, because vercel build shells out to it', () => {
-    // vercel build runs the installCommand from apps/web/vercel.json, which is
-    // `cd ../.. && pnpm install --frozen-lockfile`. Jobs run on separate runners and share
-    // nothing but the repository, so pnpm being set up in `verify` does nothing here.
-    //
-    // `npm install -g vercel` works without any setup because npm ships with the runner's
-    // Node, which is what made this gap easy to miss.
+  it('sets up Node, the only toolchain it now needs', () => {
+    // pnpm is no longer required here: Vercel builds remotely, so nothing in this job runs a
+    // workspace command. It WAS required while `vercel build` ran locally and shelled out to
+    // pnpm from a file the workflow never reads.
     const uses = steps.map((step) => String(step['uses'] ?? ''));
-
-    expect(uses.some((u) => u.startsWith('pnpm/action-setup'))).toBe(true);
     expect(uses.some((u) => u.startsWith('actions/setup-node'))).toBe(true);
   });
 

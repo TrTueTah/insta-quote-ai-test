@@ -248,16 +248,6 @@ jobs:
           fi
           echo "All three Vercel credentials are present."
 
-      # vercel build runs the installCommand from apps/web/vercel.json in a subshell, and
-      # that command is `cd ../.. && pnpm install --frozen-lockfile`. pnpm therefore has to be
-      # on PATH in THIS job. It is not inherited from `verify`: jobs run on separate runners
-      # with nothing shared but the repository.
-      #
-      # `npm install -g vercel` worked without this because npm ships with the runner's Node,
-      # which is exactly why the gap was easy to miss.
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
       - name: Use Node from .nvmrc
         uses: actions/setup-node@v4
         with:
@@ -266,34 +256,60 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel
 
-      # Building here rather than on Vercel means the artifact deployed is the one built from
-      # this verified commit, and a build failure is a pipeline failure with readable logs
-      # instead of a deployment that fails somewhere else.
-      # These run in apps/web, NOT at the repository root.
+      # Deployed from the REPOSITORY ROOT, so the whole monorepo is uploaded.
       #
-      # apps/web/vercel.json is where the project's build configuration lives, and its
-      # commands start with `cd ../..` precisely because Vercel reads it from apps/web and
-      # then needs the monorepo root to install and build. Run from the root instead, that
-      # file is never read: Vercel auto-detects at the root, finds no Next.js project there
-      # (no app/, no pages/, no next dependency) and deploys an empty one. Every path then
-      # answers 404, which is how the first real deployment failed.
-      #
-      # `vercel deploy --prebuilt` also has to run where `vercel build` wrote .vercel/output.
+      # apps/web/vercel.json's commands begin with `cd ../..`. If only apps/web were
+      # uploaded there would be no `../..` to reach, so the upload has to contain the repo
+      # and Vercel has to be told that apps/web is the project root.
       - name: Pull Vercel project settings
-        working-directory: apps/web
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Build
-        working-directory: apps/web
-        run: vercel build --prod --token="$VERCEL_TOKEN"
+      # `vercel pull` writes the project's settings, including its configured root directory.
+      # Checking it here turns a silent empty deployment into a named failure: with the root
+      # directory unset, Vercel builds the repository root, finds no Next.js project there,
+      # and deploys an empty one that answers 404 on every path. That is how an earlier run
+      # failed, with nothing in the logs to say why.
+      - name: Check the project root directory is set
+        run: |
+          settings=".vercel/project.json"
+          if [ ! -f "$settings" ]; then
+            echo "vercel pull did not write $settings, so the project could not be linked."
+            exit 1
+          fi
 
-      # The CLI prints the deployment URL to stdout, but not necessarily alone. The capture
-      # picks the last https:// token rather than assuming the whole output is the URL.
+          root="$(python3 -c "import json;print(json.load(open('$settings')).get('settings',{}).get('rootDirectory') or '')")"
+
+          if [ "$root" != "apps/web" ]; then
+            echo ""
+            echo "The Vercel project's Root Directory is '${root:-<not set>}', but it must be"
+            echo "'apps/web'."
+            echo ""
+            echo "apps/web/vercel.json is only read when apps/web is the project root, and its"
+            echo "build commands cd to the monorepo root from there. With the root directory"
+            echo "unset, Vercel builds the repository root instead, finds no Next.js project,"
+            echo "and deploys an empty site that answers 404 on every path."
+            echo ""
+            echo "Set it in Vercel -> Project -> Settings -> Build and Deployment ->"
+            echo "Root Directory -> apps/web"
+            exit 1
+          fi
+          echo "Root Directory is apps/web."
+
+      # NOT --prebuilt, deliberately.
+      #
+      # `vercel build` locally, then `vercel deploy --prebuilt`, fails on a pnpm workspace:
+      # the build traces dependencies into the single content store at the repository root,
+      # and the prebuilt upload cannot resolve them, reporting a file as missing that is
+      # present just not where it looked.
+      #
+      # Nothing is lost by letting Vercel build. The `verify` job already runs
+      # `pnpm --filter @insta-quote/web build` for this same commit, so a build failure still
+      # fails the pipeline before any deployment is attempted -- which was the only reason to
+      # build locally in the first place.
       - name: Deploy
         id: deploy
-        working-directory: apps/web
         run: |
-          vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN" | tee deploy.log
+          vercel deploy --prod --yes --token="$VERCEL_TOKEN" | tee deploy.log
           url="$(grep -oE 'https://[A-Za-z0-9._-]+\.vercel\.app' deploy.log | tail -n 1)"
           if [ -z "$url" ]; then
             echo "The deployment finished but no URL could be read from the CLI output."
@@ -310,7 +326,6 @@ jobs:
       # alias yet.
       - name: Resolve the public address
         id: site
-        working-directory: apps/web
         run: |
           deployment="${{ steps.deploy.outputs.url }}"
           public="$deployment"
